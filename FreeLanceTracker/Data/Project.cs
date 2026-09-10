@@ -21,4 +21,7 @@ public class Project
     //relationships
     public int ClientId { get; set; }
     public Client? Client { get; set; }
+    
+    public ICollection<TimeEntry> TimeEntries { get; set; } = new List<TimeEntry>();
+    
 }

@@ -20,5 +20,8 @@ public class Client
     public string? UserId { get; set; }
     public ApplicationUser? User { get; set; }
 
+    //One client can have many projects
     public ICollection<Project> Projects { get; set; } = new List<Project>();
+    //One client can have many invoices 
+    public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
 }
