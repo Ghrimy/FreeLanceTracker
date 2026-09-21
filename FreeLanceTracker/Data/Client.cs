@@ -17,7 +17,7 @@ public class Client
     [StringLength(200)] public string? Description { get; set; }
 
     //relationships
-    public string? UserId { get; set; }
+    public string UserId { get; set; } = null!;
     public ApplicationUser? User { get; set; }
 
     //One client can have many projects
