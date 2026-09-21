@@ -24,9 +24,8 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Controllers\" />
       <Folder Include="Migrations\" />
-      <Folder Include="Services\" />
+      <Folder Include="Services\InvoiceLineItemService\" />
     </ItemGroup>
 
 </Project>
