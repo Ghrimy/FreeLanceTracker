@@ -1,4 +1,4 @@
-FreelanceFlow
+Freelance tracker.
 
 A full-stack client, project, and invoicing tracker for freelancers — built with Blazor and ASP.NET Core Web API.
 
