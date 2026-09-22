@@ -8,8 +8,8 @@ namespace FreeLanceTracker.Services.ClientService;
 public interface IClientService
 {
     Task<Client?> GetClientIdAsync(int clientId, string userId);
-    Task<IEnumerable<Client>> GetAllForClientAsync(string userId);
+    Task<IEnumerable<Client>> GetAllForUserAsync(string userId);
     Task<Client> CreateAsync(Client client, string userId);
-    Task<Client> UpdateAsync(Client client, string userId);
-    Task ArchiveAsync(int clientId);
+    Task UpdateAsync(Client client, string userId);
+    Task ArchiveAsync(int clientId, string userId);
 }

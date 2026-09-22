@@ -5,10 +5,10 @@ namespace FreeLanceTracker.Services.InvoiceService;
 /// <summary>
 /// Provides functionality to manage, retrieve, and manipulate invoice-related data.
 /// </summary>
-public interface IInvoiceService
+public interface IInvoice
 {
-    Task<Invoice?> GetByIdAsync(int invoiceId);
-    Task<IEnumerable<Invoice>> GetByClientIdAsync(int clientId);
+    Task<Data.Invoice?> GetByIdAsync(int invoiceId);
+    Task<IEnumerable<Data.Invoice>> GetByClientIdAsync(int clientId);
     Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus);
     Task<decimal> GetTotalAsync(int invoiceId); 
     
@@ -17,5 +17,5 @@ public interface IInvoiceService
     Task UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId);
     
     //Create invoice from unbilled time entries
-    Task<Invoice> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds, DateTime dueDate);
+    Task<Data.Invoice> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds, DateTime dueDate);
 }

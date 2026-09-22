@@ -5,7 +5,7 @@ namespace FreeLanceTracker.Services.ProjectService;
 /// <summary>
 /// Service for managing projects.
 /// </summary>
-public interface IProjectService
+public interface IProject
 {
     Task<Project> GetProjectByIdAsync(int projectId, string userId);
     Task<IEnumerable<Project>> GetAllProjectsForClientAsync(int clientId);

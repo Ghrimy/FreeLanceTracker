@@ -5,7 +5,7 @@ namespace FreeLanceTracker.Services.TimeEntryService;
 /// <summary>
 /// Service for managing time entries.
 /// </summary>
-public interface ITimeEntryService
+public interface ITimeEntry
 {
     Task<IEnumerable<TimeEntry>> GetAllForProjectAsync(int projectId);
     Task<IEnumerable<TimeEntry>> GetUnbilledByProjectIdsAsync(IEnumerable<int> projectIds);

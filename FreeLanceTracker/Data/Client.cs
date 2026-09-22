@@ -15,6 +15,7 @@ public class Client
 
     [StringLength(50)] public string? Company { get; set; }
     [StringLength(200)] public string? Description { get; set; }
+    public bool IsArchived { get; set; }
 
     //relationships
     public string UserId { get; set; } = null!;
