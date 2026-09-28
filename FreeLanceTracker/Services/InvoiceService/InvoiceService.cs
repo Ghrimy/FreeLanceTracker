@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices.JavaScript;
 using FreeLanceTracker.Data;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,22 +6,22 @@ namespace FreeLanceTracker.Services.InvoiceService;
 public class InvoiceService(ApplicationDbContext context) : IInvoiceService
 {
 
-    public async Task<Data.Invoice?> GetByIdAsync(int invoiceId)
+    public async Task<Invoice?> GetByIdAsync(int invoiceId, string userId)
     {
         var invoice = context.Invoices.Include(i => i.LineItems)
-            .Where(i => i.InvoiceId == invoiceId).FirstOrDefaultAsync();
+            .Where(i => i.InvoiceId == invoiceId && i.Client !=null && i.Client.UserId == userId).FirstOrDefaultAsync();
         return await invoice;
     }
 
-    public async Task<IEnumerable<Data.Invoice>> GetByClientIdAsync(int clientId)
+    public async Task<IEnumerable<Invoice>> GetByClientIdAsync(int clientId, string userId)
     {
-        var invoices = context.Invoices.Where(i => i.ClientId == clientId).ToListAsync();
+        var invoices = context.Invoices.Where(i => i.ClientId == clientId && i.Client != null && i.Client.UserId == userId).ToListAsync();
         return await invoices;
     }
 
-    public async Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus)
+    public async Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus, string userId)
     {
-        var invoice = await GetByIdAsync(invoiceId);
+        var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null) throw new Exception("Invoice not found");
 
         if (invoice.Status == InvoiceStatus.Paid)
@@ -32,9 +31,9 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         await context.SaveChangesAsync();
     }
 
-    public async Task<decimal> GetTotalAsync(int invoiceId)
+    public async Task<decimal> GetTotalAsync(int invoiceId, string userId)
     {
-        var invoice = await GetByIdAsync(invoiceId);
+        var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null)
         {
             throw new Exception("Invoice not found");
@@ -42,9 +41,9 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         return invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice);
     }
 
-    public async Task<InvoiceLineItem> AddLineItemAsync(InvoiceLineItem lineItem, int invoiceId)
+    public async Task<InvoiceLineItem> AddLineItemAsync(InvoiceLineItem lineItem, int invoiceId, string userId)
     {
-        var invoice = await GetByIdAsync(invoiceId);
+        var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null)
         {
             throw new Exception("Invoice not found");
@@ -55,9 +54,15 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         return lineItem;
     }
 
-    public async Task DeleteLineItemAsync(int invoiceLineItemId)
+    public async Task DeleteLineItemAsync(int invoiceLineItemId, string userId)
     {
-        var lineItem = await context.InvoiceLineItems.FindAsync(invoiceLineItemId);
+        var lineItem = await context.InvoiceLineItems
+            .Include(li => li.Invoice)
+            .Where(li => li.InvoiceLineItemId == invoiceLineItemId
+                         && li.Invoice != null
+                         && li.Invoice.Client != null
+                         && li.Invoice.Client.UserId == userId)
+            .FirstOrDefaultAsync();
         if (lineItem is null)
         {
             throw new Exception("Invoice line item not found");
@@ -66,11 +71,19 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         await context.SaveChangesAsync();
     }
 
-    public async Task UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId)
+    public async Task UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId, string userId)
     {
-        var existing = await context.InvoiceLineItems.FindAsync(invoiceLineItemId);
+
+        var existing = await context.InvoiceLineItems.Where(i => i.InvoiceLineItemId == invoiceLineItemId
+                                                                 && i.Project != null
+                                                                 && i.Project.Client != null
+                                                                 && i.Project.Client.UserId == userId)
+            .Include(invoiceLineItem => invoiceLineItem.Invoice).FirstOrDefaultAsync();
         if (existing is null)
             throw new Exception("Invoice line item not found");
+        
+        if(existing.Invoice != null && existing.Invoice.Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Cannot edit a line item on a paid invoice.");
 
         existing.Description = lineItem.Description;
         existing.Quantity = lineItem.Quantity;
@@ -81,28 +94,27 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         await context.SaveChangesAsync();
     }
 
-    /// <summary>
-    /// Generates an invoice for unbilled time entries associated with the specified client and projects.
-    /// </summary>
-    /// <param name="clientId">The ID of the client for whom the invoice is being generated.</param>
-    /// <param name="projectIds">A collection of project IDs for which unbilled time entries should be included in the invoice.</param>
-    /// <param name="dueDate">The due date for the invoice.</param>
-    /// <returns>The newly created <see cref="Data.Invoice"/> instance.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if there are no billable time entries for the provided client and projects.</exception>
-    public async Task<Data.Invoice> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
-        DateTime dueDate)
+
+    // Generates an invoice for unbilled time entries associated with the specified client and projects.
+    public async Task<Invoice> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
+        DateTime dueDate, string userId)
     {
         // Get all unbilled time entries for the specified client and projects
         var unbilledInvoices = await context.TimeEntries.Include(p => p.Project)
             .Where(t => projectIds.Contains(t.ProjectId)
-                        && t.IsBillable && !t.IsBilled && t.Project.ClientId == clientId)
+                        && t.IsBillable 
+                        && !t.IsBilled 
+                        && t.Project != null
+                        && t.Project.Client != null
+                        && t.Project.ClientId == clientId
+                        && t.Project.Client.UserId == userId)
             .ToListAsync();
 
         if (!unbilledInvoices.Any())
             throw new InvalidOperationException("No unbilled time entries found for the selected projects.");
 
             // Create a new invoice
-            var invoice = new Data.Invoice
+            var invoice = new Invoice
             {
                 ClientId = clientId,
                 IssueDate = DateTime.UtcNow,

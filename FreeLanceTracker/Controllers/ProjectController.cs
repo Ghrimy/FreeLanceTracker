@@ -35,15 +35,14 @@ public class ProjectController(IProjectService projectService) : ControllerBase
     }
     
     [HttpPatch("{projectId:int}")]
-    public async Task<ActionResult> UpdateAsync(Project project)
+    public async Task<ActionResult> UpdateAsync(int projectId, Project project)
     {
-        if (project.ProjectId == 0) throw new Exception("Project ID is required");
-        
+        if (projectId != project.ProjectId) return BadRequest("Route/body ID mismatch.");
         await projectService.UpdateAsync(project, GetUserId());
         return Ok();
     }
     
-    [HttpPatch("{projectId:int}/update-status/")]
+    [HttpPatch("{projectId:int}/update-status")]
     public async Task<ActionResult> UpdateStatusAsync(int projectId, ProjectStatus status)
     {
         await projectService.UpdateStatusAsync(projectId, status, GetUserId());

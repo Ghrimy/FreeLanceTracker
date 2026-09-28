@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Services.InvoiceService;
 using Microsoft.AspNetCore.Authorization;
@@ -8,19 +9,21 @@ namespace FreeLanceTracker.Controllers;
 [ApiController]
 [Route("api/invoice")]
 [Authorize]
-public class InvoiceController(IInvoiceService invoiceServiceService) : ControllerBase
+public class InvoiceController(IInvoiceService invoiceService) : ControllerBase
 {
+    private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
+    
     [HttpGet("{invoiceId:int}")]
     public async Task<ActionResult<Invoice>> GetByIdAsync(int invoiceId)
     {
-        var invoice = await invoiceServiceService.GetByIdAsync(invoiceId);
+        var invoice = await invoiceService.GetByIdAsync(invoiceId, GetUserId());
         return invoice is null ? NotFound() : Ok(invoice);
     }
     
     [HttpGet("all")]
     public async Task<ActionResult<IEnumerable<Invoice>>> GetAllAsync(int clientId)
     {
-        var invoiceList = await invoiceServiceService.GetByClientIdAsync(clientId);
+        var invoiceList = await invoiceService.GetByClientIdAsync(clientId, GetUserId());
         return Ok(invoiceList);
     }
 
@@ -28,43 +31,43 @@ public class InvoiceController(IInvoiceService invoiceServiceService) : Controll
     public async Task<ActionResult<Invoice>> GenerateInvoiceFromUnbilledTimeAsync(int clientId,
         IEnumerable<int> projectIds, DateTime dueDate)
     {
-        var invoice = await invoiceServiceService.GenerateInvoiceFromUnbilledTimeAsync(clientId, projectIds, dueDate);
+        var invoice = await invoiceService.GenerateInvoiceFromUnbilledTimeAsync(clientId, projectIds, dueDate, GetUserId());
         return Ok(invoice);
     }
     
     [HttpPatch("{invoiceId:int}/status")]
     public async Task<ActionResult> UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus)
     {
-        await invoiceServiceService.UpdateStatusAsync(invoiceId, newStatus);
+        await invoiceService.UpdateStatusAsync(invoiceId, newStatus, GetUserId());
         return Ok();
     }
 
-    [HttpPatch("{invoiceId:int}/update")]
-    public async Task<ActionResult> UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId)
+    [HttpPatch("{invoiceId:int}/line-items/{invoiceLineItemId:int}")]
+    public async Task<ActionResult> UpdateLineItemAsync(int invoiceLineItemId, InvoiceLineItem lineItem)
     {
-        await invoiceServiceService.UpdateLineItemAsync(lineItem, invoiceLineItemId);
+        await invoiceService.UpdateLineItemAsync(lineItem, invoiceLineItemId, GetUserId());
         return Ok();
         
     }
     
-    [HttpPatch("{invoiceId:int}/add-line-item/{lineItemId:int}")]
+    [HttpPost("{invoiceId:int}/line-items")]
     public async Task<ActionResult<InvoiceLineItem>> AddLineItemAsync(int invoiceId, InvoiceLineItem lineItem)
     {
-        var invoiceLineItem = await invoiceServiceService.AddLineItemAsync(lineItem, invoiceId);
+        var invoiceLineItem = await invoiceService.AddLineItemAsync(lineItem, invoiceId, GetUserId());
         return Ok(invoiceLineItem);
     }
     
-    [HttpDelete("{invoiceLineItemId:int}")]
+    [HttpDelete("{invoiceId:int}/line-items/{invoiceLineItemId:int}")]
     public async Task<ActionResult> DeleteLineItemAsync(int invoiceLineItemId)
     {
-        await invoiceServiceService.DeleteLineItemAsync(invoiceLineItemId);
+        await invoiceService.DeleteLineItemAsync(invoiceLineItemId, GetUserId());
         return Ok();
     }
     
-    [HttpPost("{invoiceId:int}/invoice-total")]
-    public async Task<ActionResult<decimal> > GetInvoiceTotalAsync(int invoiceId)
+    [HttpGet("{invoiceId:int}/total")]
+    public async Task<ActionResult<decimal>> GetInvoiceTotalAsync(int invoiceId)
     {
-        var total = await invoiceServiceService.GetTotalAsync(invoiceId);
+        var total = await invoiceService.GetTotalAsync(invoiceId, GetUserId());
         return Ok(total);
     }
     
