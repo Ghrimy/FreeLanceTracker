@@ -43,19 +43,20 @@ public class ProjectController(IProjectService projectService) : ControllerBase
         return Ok();
     }
     
-    [HttpPatch]
+    [HttpPatch("{projectId:int}/update-status/")]
     public async Task<ActionResult> UpdateStatusAsync(int projectId, ProjectStatus status)
     {
         await projectService.UpdateStatusAsync(projectId, status, GetUserId());
         return Ok();
     }
 
-    [HttpDelete]
+    [HttpDelete("{projectId:int}")]
     public async Task<ActionResult> DeleteAsync(int projectId)
     {
         await projectService.DeleteAsync(projectId, GetUserId());
         return Ok();
     }
+
     
     
     

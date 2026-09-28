@@ -1,9 +1,10 @@
+using System.Runtime.InteropServices.JavaScript;
 using FreeLanceTracker.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.InvoiceService;
 
-public class Invoice(ApplicationDbContext context) : IInvoice
+public class InvoiceService(ApplicationDbContext context) : IInvoiceService
 {
 
     public async Task<Data.Invoice?> GetByIdAsync(int invoiceId)

@@ -4,6 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using FreeLanceTracker.Components;
 using FreeLanceTracker.Components.Account;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Services.ClientService;
+using FreeLanceTracker.Services.InvoiceService;
+using FreeLanceTracker.Services.ProjectService;
+using FreeLanceTracker.Services.TimeEntryService;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +18,11 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+
+builder.Services.AddScoped<IClientService, ClientService>();
+builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
 
 builder.Services.AddAuthentication(options =>
     {
