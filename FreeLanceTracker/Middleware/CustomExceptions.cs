@@ -10,11 +10,6 @@ public class NotFoundException : AppException
     public NotFoundException(string message) : base(message) { }
 }
 
-public class BusinessRuleException : AppException
-{
-    public BusinessRuleException(string message) : base(message) { }
-}
-
 public class InvoiceLockedException : AppException
 {
     public InvoiceLockedException(string message) : base(message) { }
@@ -23,4 +18,14 @@ public class InvoiceLockedException : AppException
 public class TimeEntryLockedException : AppException
 {
     public TimeEntryLockedException(string message) : base(message) { }
+}
+
+public class ValidationException : AppException
+{
+    public ValidationException(string message) : base(message) { }
+}
+
+public class GlobalException : AppException
+{
+    public GlobalException(string message) : base(message) { }
 }

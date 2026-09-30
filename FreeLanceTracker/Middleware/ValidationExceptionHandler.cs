@@ -3,18 +3,18 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FreeLanceTracker.Middleware;
 
-public class TimeEntryLockedExceptionHandler(ILogger<TimeEntryLockedExceptionHandler> logger) : IExceptionHandler
+public class ValidationExceptionHandler(ILogger<ValidationExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
-        if (exception is not TimeEntryLockedException timeEntryLockedException) return false;
-        logger.LogWarning(exception, "Resource is locked: {Message}", exception.Message);
+        if (exception is not ValidationException validationException) return false;
+        logger.LogWarning(exception, "Validation failed: {Message}", exception.Message);
 
         var problem = new ProblemDetails
         {
-            Title = "Resource is locked",
-            Status = StatusCodes.Status409Conflict,
-            Detail = timeEntryLockedException.Message
+            Title = "Validation Failed",
+            Status = StatusCodes.Status400BadRequest,
+            Detail = validationException.Message
         };
         
         context.Response.StatusCode = problem.Status.Value;

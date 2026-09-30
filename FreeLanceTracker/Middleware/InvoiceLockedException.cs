@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FreeLanceTracker.Middleware;
 
-public class InvoiceLockedExceptionHandler(ILogger<InvoiceLockedException> logger) : IExceptionHandler
+public class InvoiceLockedExceptionHandler(ILogger<InvoiceLockedExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext context, Exception exception, CancellationToken ct)
     {
@@ -13,7 +13,7 @@ public class InvoiceLockedExceptionHandler(ILogger<InvoiceLockedException> logge
         
         var problem = new ProblemDetails
         {
-            Title = "Not Found",
+            Title = "Resource is locked",
             Status = StatusCodes.Status409Conflict,
             Detail = invoiceLockedException.Message
         };

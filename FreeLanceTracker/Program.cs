@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using FreeLanceTracker.Components;
 using FreeLanceTracker.Components.Account;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Middleware;
 using FreeLanceTracker.Services.ClientService;
 using FreeLanceTracker.Services.InvoiceService;
 using FreeLanceTracker.Services.ProjectService;
@@ -19,10 +20,20 @@ builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 
+//Services
 builder.Services.AddScoped<IClientService, ClientService>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<ITimeEntryService, TimeEntryService>();
+
+//Custom exception handling
+builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
+builder.Services.AddExceptionHandler<InvoiceLockedExceptionHandler>();
+builder.Services.AddExceptionHandler<TimeEntryLockedExceptionHandler>();
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 
 builder.Services.AddAuthentication(options =>
     {
