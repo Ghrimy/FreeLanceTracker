@@ -1,5 +1,7 @@
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
+using ValidationException = FreeLanceTracker.Middleware.ValidationException;
 
 namespace FreeLanceTracker.Services.ProjectService;
 
@@ -17,14 +19,14 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
             .Where(u => u.ClientId == clientId && u.Client != null && u.Client.UserId == userId)
             .ToListAsync();
         
-        if(project is null) throw new Exception("Project not found");
+        if(project is null) throw new NotFoundException("Project not found");
         return await project;
     }
 
     public async Task<Project> CreateAsync(Project project, string userId)
     {
         var client = await context.Clients.FirstOrDefaultAsync(c => c.ClientId == project.ClientId && c.UserId == userId);
-        if (client is null) throw new Exception("Client not found");
+        if (client is null) throw new NotFoundException("Client not found");
 
         var newProject = new Project
         {
@@ -47,7 +49,7 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
     {
         var existing = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId && p.Client != null && p.Client.UserId == userId);
-        if (existing is null) throw new Exception("Project not found");
+        if (existing is null) throw new NotFoundException("Project not found");
         
         existing.Name = project.Name;
         existing.Description = project.Description;
@@ -61,7 +63,7 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
     {
         var project = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
-        if (project is null) throw new Exception("Project not found");
+        if (project is null) throw new NotFoundException("Project not found");
         project.Status = status;
         await context.SaveChangesAsync();
     }
@@ -70,7 +72,7 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
     {
         var project = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
-        if (project is null) throw new Exception("Project not found");
+        if (project is null) throw new NotFoundException("Project not found");
         context.Projects.Remove(project);
         await context.SaveChangesAsync();
     }

@@ -1,5 +1,7 @@
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
+using ValidationException = FreeLanceTracker.Middleware.ValidationException;
 
 namespace FreeLanceTracker.Services.InvoiceService;
 
@@ -22,10 +24,10 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
     public async Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus, string userId)
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
-        if (invoice is null) throw new Exception("Invoice not found");
+        if (invoice is null) throw new NotFoundException("Invoice not found");
 
         if (invoice.Status == InvoiceStatus.Paid)
-            throw new InvalidOperationException("Cannot change the status of a paid invoice.");
+            throw new InvoiceLockedException("Cannot change the status of a paid invoice.");
 
         invoice.Status = newStatus;
         await context.SaveChangesAsync();
@@ -36,7 +38,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null)
         {
-            throw new Exception("Invoice not found");
+            throw new NotFoundException("Invoice not found");
         }
         return invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice);
     }
@@ -46,7 +48,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null)
         {
-            throw new Exception("Invoice not found");
+            throw new NotFoundException("Invoice not found");
         }
         invoice.LineItems.Add(lineItem);
         context.Invoices.Update(invoice);
@@ -65,7 +67,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
             .FirstOrDefaultAsync();
         if (lineItem is null)
         {
-            throw new Exception("Invoice line item not found");
+            throw new NotFoundException("Invoice line item not found");
         }
         context.InvoiceLineItems.Remove(lineItem);
         await context.SaveChangesAsync();
@@ -80,10 +82,10 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
                                                                  && i.Project.Client.UserId == userId)
             .Include(invoiceLineItem => invoiceLineItem.Invoice).FirstOrDefaultAsync();
         if (existing is null)
-            throw new Exception("Invoice line item not found");
+            throw new NotFoundException("Invoice line item not found");
         
         if(existing.Invoice != null && existing.Invoice.Status != InvoiceStatus.Draft)
-            throw new InvalidOperationException("Cannot edit a line item on a paid invoice.");
+            throw new InvoiceLockedException("Cannot edit a line item on a paid invoice.");
 
         existing.Description = lineItem.Description;
         existing.Quantity = lineItem.Quantity;
@@ -111,7 +113,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
             .ToListAsync();
 
         if (!unbilledInvoices.Any())
-            throw new InvalidOperationException("No unbilled time entries found for the selected projects.");
+            throw new NotFoundException("No unbilled time entries found for the selected projects.");
 
             // Create a new invoice
             var invoice = new Invoice

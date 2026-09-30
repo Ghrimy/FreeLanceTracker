@@ -1,5 +1,5 @@
-using System.Net.Mime;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.TimeEntryService;
@@ -32,7 +32,7 @@ public class TimeEntryService(ApplicationDbContext context) : ITimeEntryService
     public async Task<TimeEntry> LogTimeAsync(TimeEntry entry, string userId)
     {
         var project = await context.Projects.FirstOrDefaultAsync(p => p.ProjectId == entry.ProjectId && p.Client != null && p.Client.UserId == userId);
-        if (project is null) throw new Exception("Project not found");
+        if (project is null) throw new NotFoundException("Project not found");
 
         var newEntry = new TimeEntry
         {
@@ -56,10 +56,10 @@ public class TimeEntryService(ApplicationDbContext context) : ITimeEntryService
             .FirstOrDefaultAsync(t => t.TimeEntryId == entry.TimeEntryId
                                       && t.Project != null && t.Project.Client != null
                                       && t.Project.Client.UserId == userId);
-        if (existing is null) throw new Exception("Time entry not found");
+        if (existing is null) throw new NotFoundException("Time entry not found");
 
         if (existing.IsBilled)
-            throw new InvalidOperationException("Cannot edit a time entry that has already been billed.");
+            throw new TimeEntryLockedException("Cannot edit a time entry that has already been billed.");
 
         existing.Date = entry.Date;
         existing.Description = entry.Description;
@@ -74,10 +74,10 @@ public class TimeEntryService(ApplicationDbContext context) : ITimeEntryService
             .FirstOrDefaultAsync(t => t.TimeEntryId == timeEntryId 
                                       && t.Project != null && t.Project.Client != null 
                                       && t.Project.Client.UserId == userId);
-        if (existing is null) throw new Exception("Time entry not found");
+        if (existing is null) throw new NotFoundException("Time entry not found");
         
         if (existing.IsBilled)
-            throw new InvalidOperationException("Cannot edit a time entry that has already been billed.");
+            throw new TimeEntryLockedException("Cannot edit a time entry that has already been billed.");
 
         context.TimeEntries.Remove(existing);
         await context.SaveChangesAsync();

@@ -1,4 +1,5 @@
 using FreeLanceTracker.Data;
+using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.ClientService;
@@ -24,7 +25,7 @@ public class ClientService(ApplicationDbContext context) : IClientService
     public async Task<Client> CreateAsync(Client client, string userId)
     {
         var userExists = await context.Users.AnyAsync(u => u.Id == userId);
-        if (!userExists) throw new Exception("User not found");
+        if (!userExists) throw new NotFoundException("User not found");
 
         var newClient = new Client
         {
@@ -45,7 +46,7 @@ public class ClientService(ApplicationDbContext context) : IClientService
         var existingClient = await context.Clients
             .FirstOrDefaultAsync(c => c.ClientId == client.ClientId && c.UserId == userId);
 
-        if (existingClient is null) throw new Exception("Client not found");
+        if (existingClient is null) throw new NotFoundException("Client not found");
 
         existingClient.Name = client.Name;
         existingClient.Email = client.Email;
@@ -59,7 +60,7 @@ public class ClientService(ApplicationDbContext context) : IClientService
         var client = await context.Clients
             .FirstOrDefaultAsync(c => c.ClientId == clientId && c.UserId == userId);
 
-        if (client is null) throw new Exception("Client not found");
+        if (client is null) throw new NotFoundException("Client not found");
 
         client.IsArchived = true;
         await context.SaveChangesAsync();
