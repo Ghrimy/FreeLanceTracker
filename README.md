@@ -25,3 +25,13 @@ Tech stack:
     Data EF Core + SQL Server
 
 A 3-layer separation (UI → Application → Data) rather than putting logic in code-behind or controllers directly — keeps business rules testable and framework-agnostic.
+
+
+Progress
+- Entity model + EF Core relationships (Client, Project, TimeEntry, Invoice, InvoiceLineItem)
+- Multi-tenant ownership enforced at the service layer (every query scoped to the logged-in freelancer)
+- JWT authentication wired through ASP.NET Core Identity
+- Custom exception hierarchy (NotFoundException, InvoiceLockedException, TimeEntryLockedException, ValidationException) + IExceptionHandler pipeline mapping each to the correct HTTP status / ProblemDetails response
+- Core feature: generate an invoice from unbilled time entries, grouped by project
+- All API endpoints verified working end-to-end via Swagger
+- 
