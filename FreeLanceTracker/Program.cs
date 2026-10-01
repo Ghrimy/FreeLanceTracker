@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
 using FreeLanceTracker.Components;
 using FreeLanceTracker.Components.Account;
 using FreeLanceTracker.Data;
@@ -13,6 +12,8 @@ using FreeLanceTracker.Services.ClientService;
 using FreeLanceTracker.Services.InvoiceService;
 using FreeLanceTracker.Services.ProjectService;
 using FreeLanceTracker.Services.TimeEntryService;
+using Microsoft.OpenApi;
+
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -66,48 +67,47 @@ builder.Services.AddSingleton<IEmailSender<ApplicationUser>, IdentityNoOpEmailSe
 var jwtKey = configuration["Jwt:Key"]
     ?? throw new InvalidOperationException("Jwt:Key not configured.");
 
-var authBuilder = builder.Services.AddAuthentication(options =>
-{
-    options.DefaultScheme = IdentityConstants.ApplicationScheme;
-    options.DefaultSignInScheme = IdentityConstants.ExternalScheme;
-});
-
-authBuilder.AddIdentityCookies();
-
-authBuilder.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
-{
-    options.TokenValidationParameters = new TokenValidationParameters
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
 
-        ValidIssuer = configuration["Jwt:Issuer"],
-        ValidAudience = configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
-    };
-});
+            ValidIssuer = configuration["Jwt:Issuer"],
+            ValidAudience = configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(configuration["Jwt:Key"])
+            )
+        };
+    });
 
-builder.Services.AddAuthorization();
-builder.Services.AddHttpContextAccessor();
-
-// ---- Swagger ----
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "FreeLanceTracker API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Event API", Version = "v1" });
 
+    // Add JWT Authentication
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme.\n\n" +
-                      "Enter your token below prefixed with 'Bearer '",
+                      "Enter your token in the text input below prefixed with 'Bearer '",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
-    c.ResolveConflictingActions(apiDescriptions => apiDescriptions.First());
+    
+    c.AddSecurityRequirement(document => new OpenApiSecurityRequirement
+    {
+        [new OpenApiSecuritySchemeReference("Bearer", document)] = []
+    });
 });
+
+builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 
