@@ -1,23 +1,23 @@
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
-using ValidationException = FreeLanceTracker.Middleware.ValidationException;
 
 namespace FreeLanceTracker.Services.InvoiceService;
 
 public class InvoiceService(ApplicationDbContext context) : IInvoiceService
 {
-
     public async Task<Invoice?> GetByIdAsync(int invoiceId, string userId)
     {
         var invoice = context.Invoices.Include(i => i.LineItems)
-            .Where(i => i.InvoiceId == invoiceId && i.Client !=null && i.Client.UserId == userId).FirstOrDefaultAsync();
+            .Where(i => i.InvoiceId == invoiceId && i.Client != null && i.Client.UserId == userId)
+            .FirstOrDefaultAsync();
         return await invoice;
     }
 
     public async Task<IEnumerable<Invoice>> GetByClientIdAsync(int clientId, string userId)
     {
-        var invoices = context.Invoices.Where(i => i.ClientId == clientId && i.Client != null && i.Client.UserId == userId).ToListAsync();
+        var invoices = context.Invoices
+            .Where(i => i.ClientId == clientId && i.Client != null && i.Client.UserId == userId).ToListAsync();
         return await invoices;
     }
 
@@ -36,20 +36,14 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
     public async Task<decimal> GetTotalAsync(int invoiceId, string userId)
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
-        if (invoice is null)
-        {
-            throw new NotFoundException("Invoice not found");
-        }
+        if (invoice is null) throw new NotFoundException("Invoice not found");
         return invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice);
     }
 
     public async Task<InvoiceLineItem> AddLineItemAsync(InvoiceLineItem lineItem, int invoiceId, string userId)
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
-        if (invoice is null)
-        {
-            throw new NotFoundException("Invoice not found");
-        }
+        if (invoice is null) throw new NotFoundException("Invoice not found");
         invoice.LineItems.Add(lineItem);
         context.Invoices.Update(invoice);
         await context.SaveChangesAsync();
@@ -65,17 +59,13 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
                          && li.Invoice.Client != null
                          && li.Invoice.Client.UserId == userId)
             .FirstOrDefaultAsync();
-        if (lineItem is null)
-        {
-            throw new NotFoundException("Invoice line item not found");
-        }
+        if (lineItem is null) throw new NotFoundException("Invoice line item not found");
         context.InvoiceLineItems.Remove(lineItem);
         await context.SaveChangesAsync();
     }
 
     public async Task UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId, string userId)
     {
-
         var existing = await context.InvoiceLineItems.Where(i => i.InvoiceLineItemId == invoiceLineItemId
                                                                  && i.Project != null
                                                                  && i.Project.Client != null
@@ -83,8 +73,8 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
             .Include(invoiceLineItem => invoiceLineItem.Invoice).FirstOrDefaultAsync();
         if (existing is null)
             throw new NotFoundException("Invoice line item not found");
-        
-        if(existing.Invoice != null && existing.Invoice.Status != InvoiceStatus.Draft)
+
+        if (existing.Invoice != null && existing.Invoice.Status != InvoiceStatus.Draft)
             throw new InvoiceLockedException("Cannot edit a line item on a paid invoice.");
 
         existing.Description = lineItem.Description;
@@ -104,8 +94,8 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         // Get all unbilled time entries for the specified client and projects
         var unbilledInvoices = await context.TimeEntries.Include(p => p.Project)
             .Where(t => projectIds.Contains(t.ProjectId)
-                        && t.IsBillable 
-                        && !t.IsBilled 
+                        && t.IsBillable
+                        && !t.IsBilled
                         && t.Project != null
                         && t.Project.Client != null
                         && t.Project.ClientId == clientId
@@ -115,56 +105,53 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         if (!unbilledInvoices.Any())
             throw new NotFoundException("No unbilled time entries found for the selected projects.");
 
-            // Create a new invoice
-            var invoice = new Invoice
+        // Create a new invoice
+        var invoice = new Invoice
+        {
+            ClientId = clientId,
+            IssueDate = DateTime.UtcNow,
+            DueDate = dueDate,
+            Status = InvoiceStatus.Draft,
+            InvoiceNumber = await GenerateInvoiceNumberAsync(),
+            LineItems = new List<InvoiceLineItem>()
+        };
+
+        var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
+
+        // Calculate total hours for each project and adds it as one item instead of individual items
+        foreach (var group in groupedByProject)
+        {
+            var project = group.Key;
+            var totalHours = group.Sum(t => t.Hours);
+
+            invoice.LineItems.Add(new InvoiceLineItem
             {
-                ClientId = clientId,
-                IssueDate = DateTime.UtcNow,
-                DueDate = dueDate,
-                Status = InvoiceStatus.Draft,
-                InvoiceNumber = await GenerateInvoiceNumberAsync(),
-                LineItems = new List<InvoiceLineItem>()
-            };
+                Description = $"{project.Name} — {totalHours}h",
+                Quantity = totalHours,
+                UnitPrice = project.HourlyRate,
+                ProjectId = project.ProjectId
+            });
+        }
 
-            var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
+        // Mark all time entries as billed
+        foreach (var entry in unbilledInvoices)
+            entry.IsBilled = true;
 
-            // Calculate total hours for each project and adds it as one item instead of individual items
-            foreach (var group in groupedByProject)
-            {
-                var project = group.Key;
-                var totalHours = group.Sum(t => t.Hours);
+        context.Invoices.Add(invoice);
+        await context.SaveChangesAsync();
 
-                invoice.LineItems.Add(new InvoiceLineItem
-                {
-                    Description = $"{project.Name} — {totalHours}h",
-                    Quantity = totalHours,
-                    UnitPrice = project.HourlyRate,
-                    ProjectId = project.ProjectId
-                });
-            }
-
-            // Mark all time entries as billed
-            foreach (var entry in unbilledInvoices)
-                entry.IsBilled = true;
-
-            context.Invoices.Add(invoice);
-            await context.SaveChangesAsync();
-
-            return invoice;
-        
-
+        return invoice;
     }
-    
-    /// <summary>
-    /// Generates a unique invoice number based on the current year and the count of invoices issued in that year.
-    /// </summary>
 
+    /// <summary>
+    ///     Generates a unique invoice number based on the current year and the count of invoices issued in that year.
+    /// </summary>
     private async Task<string> GenerateInvoiceNumberAsync()
     {
         var year = DateTime.UtcNow.Year;
         var countThisYear = await context.Invoices
             .CountAsync(i => i.IssueDate.Year == year);
 
-        return $"INV-{year}-{(countThisYear + 1):D4}";
+        return $"INV-{year}-{countThisYear + 1:D4}";
     }
 }

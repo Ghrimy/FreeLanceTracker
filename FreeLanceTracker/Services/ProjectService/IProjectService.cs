@@ -3,7 +3,7 @@ using FreeLanceTracker.Data;
 namespace FreeLanceTracker.Services.ProjectService;
 
 /// <summary>
-/// Service for managing projects.
+///     Service for managing projects.
 /// </summary>
 public interface IProjectService
 {

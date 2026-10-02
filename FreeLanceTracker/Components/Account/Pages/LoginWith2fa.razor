@@ -1,8 +1,7 @@
 ﻿@page "/Account/LoginWith2fa"
-
 @using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Identity
 @using FreeLanceTracker.Data
+@using Microsoft.AspNetCore.Identity
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -23,7 +22,8 @@
             <DataAnnotationsValidator/>
             <ValidationSummary class="text-danger" role="alert"/>
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.TwoFactorCode" id="Input.TwoFactorCode" class="form-control" autocomplete="off"/>
+                <InputText @bind-Value="Input.TwoFactorCode" id="Input.TwoFactorCode" class="form-control"
+                           autocomplete="off"/>
                 <label for="Input.TwoFactorCode" class="form-label">Authenticator code</label>
                 <ValidationMessage For="() => Input.TwoFactorCode" class="text-danger"/>
             </div>
@@ -56,7 +56,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Input ??= new();
+        Input ??= new InputModel();
 
         // Ensure the user has gone through the username & password screen first
         user = await SignInManager.GetTwoFactorAuthenticationUserAsync() ??

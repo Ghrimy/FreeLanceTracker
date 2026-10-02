@@ -3,7 +3,7 @@ using FreeLanceTracker.Data;
 namespace FreeLanceTracker.Services.TimeEntryService;
 
 /// <summary>
-/// Service for managing time entries.
+///     Service for managing time entries.
 /// </summary>
 public interface ITimeEntryService
 {

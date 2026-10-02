@@ -16,7 +16,7 @@ public class TimeEntryLockedExceptionHandler(ILogger<TimeEntryLockedExceptionHan
             Status = StatusCodes.Status409Conflict,
             Detail = timeEntryLockedException.Message
         };
-        
+
         context.Response.StatusCode = problem.Status.Value;
         await context.Response.WriteAsJsonAsync(problem, ct);
         return true;

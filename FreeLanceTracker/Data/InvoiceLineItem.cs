@@ -9,15 +9,14 @@ public class InvoiceLineItem
     [StringLength(200)] public string Description { get; set; } = string.Empty;
     public decimal Quantity { get; set; }
     public decimal UnitPrice { get; set; }
-    
+
     //relationships
     public int InvoiceId { get; set; }
     public Invoice? Invoice { get; set; }
 
-    public int? ProjectId { get; set; } 
+    public int? ProjectId { get; set; }
     public Project? Project { get; set; }
-    
+
     public int? TimeEntryId { get; set; }
     public TimeEntry? TimeEntry { get; set; }
-
 }

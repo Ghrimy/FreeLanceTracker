@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ClientDTO;
 using FreeLanceTracker.Services.ClientService;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,37 +10,46 @@ namespace FreeLanceTracker.Controllers;
 
 [ApiController]
 [Route("api/client")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class ClientController(IClientService clientService) : ControllerBase
 {
-
     [HttpGet("{clientId:int}")]
-    public async Task<ActionResult<Client>> GetClientIdAsync(int clientId)
+    public async Task<ActionResult<GetClientDto>> GetClientIdAsync(int clientId)
     {
         var client = await clientService.GetClientIdAsync(clientId, GetUserId());
         return client is null ? NotFound() : Ok(client);
     }
-    
+
+
     [HttpGet("all")]
-    public async Task<ActionResult<IEnumerable<Client>>> GetAllForUserAsync()
+    public async Task<ActionResult<IEnumerable<GetAllClientDto>>> GetAllForUserAsync()
     {
         var clientList = await clientService.GetAllForUserAsync(GetUserId());
         return Ok(clientList);
     }
-    
-    [HttpPost]
-    public async Task<ActionResult<Client>> CreateAsync(Client client)
-    {
 
-        var createClient = await clientService.CreateAsync(client, GetUserId());
-        return Ok(createClient);
+
+    [HttpPost]
+    public async Task<ActionResult<CreateClientDto>> CreateAsync(CreateClientDto clientDto)
+    {
+        var client = new Client
+        {
+            Name = clientDto.Name,
+            Email = clientDto.Email,
+            Company = clientDto.Company,
+            Description = clientDto.Description
+        };
+
+        var created = await clientService.CreateAsync(clientDto, GetUserId());
+        return Ok(created);
     }
 
+
     [HttpPatch("{clientId:int}")]
-    public async Task<ActionResult> UpdateAsync(Client client)
+    public async Task<ActionResult> UpdateAsync(UpdateClientDto client)
     {
         if (client.ClientId == 0) throw new Exception("Client ID is required");
-        
+
         await clientService.UpdateAsync(client, GetUserId());
         return Ok();
     }
@@ -50,7 +61,8 @@ public class ClientController(IClientService clientService) : ControllerBase
         return Ok();
     }
 
-    private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
-
-
+    private string GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
+    }
 }

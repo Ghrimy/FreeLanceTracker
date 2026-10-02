@@ -11,7 +11,7 @@ public class TimeEntry
     [StringLength(200)] public string? Description { get; set; }
     public bool IsBillable { get; set; }
     public bool IsBilled { get; set; }
-    
+
     //relationships
     public int ProjectId { get; set; }
     public Project? Project { get; set; }

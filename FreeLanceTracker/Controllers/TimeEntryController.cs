@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Services.TimeEntryService;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,11 +9,14 @@ namespace FreeLanceTracker.Controllers;
 
 [ApiController]
 [Route("api/time-entry")]
-[Authorize]
+[Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class TimeEntryController(ITimeEntryService timeEntryService) : ControllerBase
 {
-    private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
-    
+    private string GetUserId()
+    {
+        return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
+    }
+
     [HttpGet("{projectId:int}")]
     public async Task<ActionResult<IEnumerable<TimeEntry>>> GetAllForProjectAsync(int projectId)
     {
@@ -24,7 +28,7 @@ public class TimeEntryController(ITimeEntryService timeEntryService) : Controlle
     public async Task<ActionResult<IEnumerable<TimeEntry>>> GetUnbilledByProjectIdsAsync(IEnumerable<int> projectIds)
     {
         var timeEntries = await timeEntryService.GetUnbilledByProjectIdsAsync(projectIds, GetUserId());
-        return Ok(timeEntries);   
+        return Ok(timeEntries);
     }
 
     [HttpPost("{projectId:int}/log-time")]
@@ -34,7 +38,7 @@ public class TimeEntryController(ITimeEntryService timeEntryService) : Controlle
         var createdTimeEntry = await timeEntryService.LogTimeAsync(timeEntry, GetUserId());
         return Ok(createdTimeEntry);
     }
-    
+
     [HttpPatch("{timeEntryId:int}")]
     public async Task<ActionResult> UpdateAsync(int timeEntryId, TimeEntry timeEntry)
     {
@@ -42,12 +46,11 @@ public class TimeEntryController(ITimeEntryService timeEntryService) : Controlle
         await timeEntryService.UpdateAsync(timeEntry, GetUserId());
         return Ok();
     }
-    
+
     [HttpDelete("{timeEntryId:int}")]
     public async Task<ActionResult> DeleteAsync(int timeEntryId)
     {
         await timeEntryService.DeleteAsync(timeEntryId, GetUserId());
         return Ok();
     }
-        
 }

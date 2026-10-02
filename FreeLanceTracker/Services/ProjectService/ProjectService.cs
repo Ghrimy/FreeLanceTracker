@@ -1,7 +1,6 @@
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
-using ValidationException = FreeLanceTracker.Middleware.ValidationException;
 
 namespace FreeLanceTracker.Services.ProjectService;
 
@@ -18,14 +17,15 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
         var project = context.Projects
             .Where(u => u.ClientId == clientId && u.Client != null && u.Client.UserId == userId)
             .ToListAsync();
-        
-        if(project is null) throw new NotFoundException("Project not found");
+
+        if (project is null) throw new NotFoundException("Project not found");
         return await project;
     }
 
     public async Task<Project> CreateAsync(Project project, string userId)
     {
-        var client = await context.Clients.FirstOrDefaultAsync(c => c.ClientId == project.ClientId && c.UserId == userId);
+        var client =
+            await context.Clients.FirstOrDefaultAsync(c => c.ClientId == project.ClientId && c.UserId == userId);
         if (client is null) throw new NotFoundException("Client not found");
 
         var newProject = new Project
@@ -39,7 +39,7 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
             StartDate = project.StartDate,
             TimeEntries = new List<TimeEntry>()
         };
-        
+
         context.Projects.Add(newProject);
         await context.SaveChangesAsync();
         return project;
@@ -48,9 +48,10 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
     public async Task UpdateAsync(Project project, string userId)
     {
         var existing = await context.Projects
-            .FirstOrDefaultAsync(p => p.ProjectId == project.ProjectId && p.Client != null && p.Client.UserId == userId);
+            .FirstOrDefaultAsync(p =>
+                p.ProjectId == project.ProjectId && p.Client != null && p.Client.UserId == userId);
         if (existing is null) throw new NotFoundException("Project not found");
-        
+
         existing.Name = project.Name;
         existing.Description = project.Description;
         existing.HourlyRate = project.HourlyRate;

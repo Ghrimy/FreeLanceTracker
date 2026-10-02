@@ -1,5 +1,8 @@
 using System.Security.Claims;
 using System.Text.Json;
+using FreeLanceTracker.Components.Account.Pages;
+using FreeLanceTracker.Components.Account.Pages.Manage;
+using FreeLanceTracker.Data;
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -7,9 +10,6 @@ using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Primitives;
-using FreeLanceTracker.Components.Account.Pages;
-using FreeLanceTracker.Components.Account.Pages.Manage;
-using FreeLanceTracker.Data;
 
 namespace Microsoft.AspNetCore.Routing;
 
@@ -62,19 +62,17 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
 
             var user = await userManager.GetUserAsync(context.User);
             if (user is null)
-            {
                 return Results.NotFound($"Unable to load user with ID '{userManager.GetUserId(context.User)}'.");
-            }
 
             var userId = await userManager.GetUserIdAsync(user);
             var userName = await userManager.GetUserNameAsync(user) ?? "User";
-            var optionsJson = await signInManager.MakePasskeyCreationOptionsAsync(new()
+            var optionsJson = await signInManager.MakePasskeyCreationOptionsAsync(new PasskeyUserEntity
             {
                 Id = userId,
                 Name = userName,
                 DisplayName = userName
             });
-            return TypedResults.Content(optionsJson, contentType: "application/json");
+            return TypedResults.Content(optionsJson, "application/json");
         });
 
         accountGroup.MapPost("/PasskeyRequestOptions", async (
@@ -88,7 +86,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
 
             var user = string.IsNullOrEmpty(username) ? null : await userManager.FindByNameAsync(username);
             var optionsJson = await signInManager.MakePasskeyRequestOptionsAsync(user);
-            return TypedResults.Content(optionsJson, contentType: "application/json");
+            return TypedResults.Content(optionsJson, "application/json");
         });
 
         var manageGroup = accountGroup.MapGroup("/Manage").RequireAuthorization();
@@ -121,9 +119,7 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
         {
             var user = await userManager.GetUserAsync(context.User);
             if (user is null)
-            {
                 return Results.NotFound($"Unable to load user with ID '{userManager.GetUserId(context.User)}'.");
-            }
 
             var userId = await userManager.GetUserIdAsync(user);
             downloadLogger.LogInformation("User with ID '{UserId}' asked for their personal data.", userId);
@@ -132,22 +128,16 @@ internal static class IdentityComponentsEndpointRouteBuilderExtensions
             var personalData = new Dictionary<string, string>();
             var personalDataProps = typeof(ApplicationUser).GetProperties()
                 .Where(prop => Attribute.IsDefined(prop, typeof(PersonalDataAttribute)));
-            foreach (var p in personalDataProps)
-            {
-                personalData.Add(p.Name, p.GetValue(user)?.ToString() ?? "null");
-            }
+            foreach (var p in personalDataProps) personalData.Add(p.Name, p.GetValue(user)?.ToString() ?? "null");
 
             var logins = await userManager.GetLoginsAsync(user);
-            foreach (var l in logins)
-            {
-                personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
-            }
+            foreach (var l in logins) personalData.Add($"{l.LoginProvider} external login provider key", l.ProviderKey);
 
             personalData.Add("Authenticator Key", (await userManager.GetAuthenticatorKeyAsync(user))!);
             var fileBytes = JsonSerializer.SerializeToUtf8Bytes(personalData);
 
             context.Response.Headers.TryAdd("Content-Disposition", "attachment; filename=PersonalData.json");
-            return TypedResults.File(fileBytes, contentType: "application/json", fileDownloadName: "PersonalData.json");
+            return TypedResults.File(fileBytes, "application/json", "PersonalData.json");
         });
 
         return accountGroup;

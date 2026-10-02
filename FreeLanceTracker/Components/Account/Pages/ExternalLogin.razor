@@ -1,12 +1,11 @@
 ﻿@page "/Account/ExternalLogin"
-
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
 @using System.Text
 @using System.Text.Encodings.Web
+@using FreeLanceTracker.Data
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
-@using FreeLanceTracker.Data
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager
@@ -35,7 +34,8 @@
             <DataAnnotationsValidator/>
             <ValidationSummary class="text-danger" role="alert"/>
             <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="email" placeholder="Please enter your email."/>
+                <InputText @bind-Value="Input.Email" id="Input.Email" class="form-control" autocomplete="email"
+                           placeholder="Please enter your email."/>
                 <label for="Input.Email" class="form-label">Email</label>
                 <ValidationMessage For="() => Input.Email"/>
             </div>
@@ -64,7 +64,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        Input ??= new();
+        Input ??= new InputModel();
 
         if (RemoteError is not null)
         {
@@ -107,8 +107,8 @@
         var result = await SignInManager.ExternalLoginSignInAsync(
             externalLoginInfo.LoginProvider,
             externalLoginInfo.ProviderKey,
-            isPersistent: false,
-            bypassTwoFactor: true);
+            false,
+            true);
 
         if (result.Succeeded)
         {
@@ -119,7 +119,8 @@
             RedirectManager.RedirectTo(ReturnUrl);
             return;
         }
-        else if (result.IsLockedOut)
+
+        if (result.IsLockedOut)
         {
             RedirectManager.RedirectTo("Account/Lockout");
             return;
@@ -166,11 +167,11 @@
                 // If account confirmation is required, we need to show the link if we don't have a real email sender
                 if (UserManager.Options.SignIn.RequireConfirmedAccount)
                 {
-                    RedirectManager.RedirectTo("Account/RegisterConfirmation", new() { ["email"] = Input.Email });
+                    RedirectManager.RedirectTo("Account/RegisterConfirmation", new Dictionary<string, object?> { ["email"] = Input.Email });
                 }
                 else
                 {
-                    await SignInManager.SignInAsync(user, isPersistent: false, externalLoginInfo.LoginProvider);
+                    await SignInManager.SignInAsync(user, false, externalLoginInfo.LoginProvider);
                     RedirectManager.RedirectTo(ReturnUrl);
                 }
             }

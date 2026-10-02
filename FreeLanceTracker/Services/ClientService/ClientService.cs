@@ -1,28 +1,36 @@
+using AutoMapper;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ClientDTO;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.ClientService;
 
-public class ClientService(ApplicationDbContext context) : IClientService
+public class ClientService(ApplicationDbContext context, IMapper clientMapper) : IClientService
 {
-    public async Task<Client?> GetClientIdAsync(int clientId, string userId)
+    public async Task<GetClientDto> GetClientIdAsync(int clientId, string userId)
     {
-        var client =  context.Clients
+        var client = await context.Clients
             .Where(c => c.ClientId == clientId)
             .Where(c => c.UserId == userId).FirstOrDefaultAsync();
 
-        return await client;
+        if (client is null) throw new NotFoundException("Client not found");
+        var dto = clientMapper.Map<GetClientDto>(client);
+
+        return dto;
     }
 
-    public async Task<IEnumerable<Client>> GetAllForUserAsync(string userId)
+    public async Task<IEnumerable<GetAllClientDto>> GetAllForUserAsync(string userId)
     {
-        return await context.Clients
+        var allClient = await context.Clients
             .Where(c => c.UserId == userId)
             .ToListAsync();
+
+        var dto = clientMapper.Map<IEnumerable<GetAllClientDto>>(allClient);
+        return dto;
     }
 
-    public async Task<Client> CreateAsync(Client client, string userId)
+    public async Task<Client> CreateAsync(CreateClientDto client, string userId)
     {
         var userExists = await context.Users.AnyAsync(u => u.Id == userId);
         if (!userExists) throw new NotFoundException("User not found");
@@ -41,7 +49,7 @@ public class ClientService(ApplicationDbContext context) : IClientService
         return newClient;
     }
 
-    public async Task UpdateAsync(Client client, string userId)
+    public async Task UpdateAsync(UpdateClientDto client, string userId)
     {
         var existingClient = await context.Clients
             .FirstOrDefaultAsync(c => c.ClientId == client.ClientId && c.UserId == userId);
@@ -54,7 +62,7 @@ public class ClientService(ApplicationDbContext context) : IClientService
         existingClient.Description = client.Description;
         await context.SaveChangesAsync();
     }
-    
+
     public async Task ArchiveAsync(int clientId, string userId)
     {
         var client = await context.Clients
