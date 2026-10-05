@@ -3,10 +3,13 @@ using FreeLanceTracker.Components;
 using FreeLanceTracker.Components.Account;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Middleware;
+using FreeLanceTracker.Services;
 using FreeLanceTracker.Services.ClientService;
 using FreeLanceTracker.Services.InvoiceService;
+using FreeLanceTracker.Services.JwtTokenService;
 using FreeLanceTracker.Services.ProjectService;
 using FreeLanceTracker.Services.TimeEntryService;
+using FreeLanceTracker.TokenHandler;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -42,6 +45,23 @@ builder.Services.AddExceptionHandler<TimeEntryLockedExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>(); // must be last
 builder.Services.AddProblemDetails();
+
+//JWT services
+builder.Services.AddScoped<TokenStore>();
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<AuthTokenHandler>();
+
+builder.Services.AddScoped(sp =>
+{
+    var handler = sp.GetRequiredService<AuthTokenHandler>();
+
+    handler.InnerHandler = new HttpClientHandler();
+
+    return new HttpClient(handler)
+    {
+        BaseAddress = new Uri("https://localhost:7191")
+    };
+});
 
 // ---- Database ----
 var connectionString = configuration.GetConnectionString("DefaultConnection")

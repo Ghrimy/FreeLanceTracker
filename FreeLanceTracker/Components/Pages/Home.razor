@@ -1,7 +1,19 @@
-﻿@page "/"
+@page "/"
 
 <PageTitle>Home</PageTitle>
+<h3>Home</h3>
+<p>Welcome to FreeLanceTracker</p>
 
-<h1>Hello, world!</h1>
+<AuthorizeView>
+    <Authorized>
+        <p>You are logged in</p>
+    </Authorized>
+    <NotAuthorized>
+        <p>You are not logged in</p>
+    </NotAuthorized>
 
-Welcome to your new app.
+</AuthorizeView>
+
+@code {
+    
+}

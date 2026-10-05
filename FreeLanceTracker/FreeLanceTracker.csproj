@@ -26,6 +26,9 @@
     </ItemGroup>
 
     <ItemGroup>
+        <Folder Include="DTOs\InvoiceDto\" />
+        <Folder Include="DTOs\ProjectDto\" />
+        <Folder Include="DTOs\TimeEntryDto\" />
         <Folder Include="Migrations\"/>
     </ItemGroup>
 

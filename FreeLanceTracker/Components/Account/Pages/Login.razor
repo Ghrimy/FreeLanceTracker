@@ -1,6 +1,8 @@
 ﻿@page "/Account/Login"
 @using System.ComponentModel.DataAnnotations
 @using FreeLanceTracker.Data
+@using FreeLanceTracker.Services
+@using FreeLanceTracker.Services.JwtTokenService
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Identity
 
@@ -9,6 +11,10 @@
 @inject ILogger<Login> Logger
 @inject NavigationManager NavigationManager
 @inject IdentityRedirectManager RedirectManager
+@inject TokenStore TokenStore
+
+
+
 
 <PageTitle>Log in</PageTitle>
 
@@ -127,6 +133,7 @@
 
         if (result.Succeeded)
         {
+            await TokenStore.GetTokenAsync();
             Logger.LogInformation("User logged in.");
             RedirectManager.RedirectTo(ReturnUrl);
         }
