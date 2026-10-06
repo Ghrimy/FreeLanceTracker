@@ -1,5 +1,5 @@
 using FreeLanceTracker.Data;
-using FreeLanceTracker.DTOs.ClientDTO;
+using FreeLanceTracker.DTOs.ClientDtos;
 
 namespace FreeLanceTracker.Services.ClientService;
 
@@ -8,7 +8,7 @@ namespace FreeLanceTracker.Services.ClientService;
 /// </summary>
 public interface IClientService
 {
-    Task<GetClientDto> GetClientIdAsync(int clientId, string userId);
+    Task<ClientDto> GetClientIdAsync(int clientId, string userId);
     Task<IEnumerable<GetAllClientDto>> GetAllForUserAsync(string userId);
     Task<Client> CreateAsync(CreateClientDto client, string userId);
     Task UpdateAsync(UpdateClientDto client, string userId);

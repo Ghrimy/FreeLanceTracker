@@ -1,28 +1,34 @@
+using AutoMapper;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ProjectDtos;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.ProjectService;
 
-public class ProjectService(ApplicationDbContext context) : IProjectService
+public class ProjectService(ApplicationDbContext context, IMapper mapper) : IProjectService
 {
-    public async Task<Project?> GetByIdAsync(int projectId, string userId)
+    public async Task<ProjectDto> GetByIdAsync(int projectId, string userId)
     {
-        return await context.Projects
+        var project = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
+        
+        var dto = mapper.Map<ProjectDto>(project);
+        return dto;
     }
 
-    public async Task<IEnumerable<Project>> GetAllProjectsForClientAsync(int clientId, string userId)
+    public async Task<IEnumerable<ProjectDto>> GetAllProjectsForClientAsync(int clientId, string userId)
     {
-        var project = context.Projects
+        var project = await context.Projects
             .Where(u => u.ClientId == clientId && u.Client != null && u.Client.UserId == userId)
             .ToListAsync();
 
         if (project is null) throw new NotFoundException("Project not found");
-        return await project;
+        var dtos = mapper.Map<IEnumerable<ProjectDto>>(project);
+        return dtos;
     }
 
-    public async Task<Project> CreateAsync(Project project, string userId)
+    public async Task<ProjectDto> CreateAsync(ProjectDto project, string userId)
     {
         var client =
             await context.Clients.FirstOrDefaultAsync(c => c.ClientId == project.ClientId && c.UserId == userId);
@@ -42,10 +48,12 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
 
         context.Projects.Add(newProject);
         await context.SaveChangesAsync();
-        return project;
+        
+        var dto = mapper.Map<ProjectDto>(newProject);
+        return dto;
     }
 
-    public async Task UpdateAsync(Project project, string userId)
+    public async Task UpdateAsync(UpdateProjectDto project, string userId)
     {
         var existing = await context.Projects
             .FirstOrDefaultAsync(p =>
@@ -60,12 +68,12 @@ public class ProjectService(ApplicationDbContext context) : IProjectService
         await context.SaveChangesAsync();
     }
 
-    public async Task UpdateStatusAsync(int projectId, ProjectStatus status, string userId)
+    public async Task UpdateStatusAsync(UpdateProjectStatusDto projectdto, string userId)
     {
         var project = await context.Projects
-            .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
+            .FirstOrDefaultAsync(p => p.ProjectId == projectdto.ProjectId && p.Client != null && p.Client.UserId == userId);
         if (project is null) throw new NotFoundException("Project not found");
-        project.Status = status;
+        project.Status = projectdto.Status;
         await context.SaveChangesAsync();
     }
 

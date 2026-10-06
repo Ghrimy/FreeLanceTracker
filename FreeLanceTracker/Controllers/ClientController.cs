@@ -1,6 +1,6 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
-using FreeLanceTracker.DTOs.ClientDTO;
+using FreeLanceTracker.DTOs.ClientDtos;
 using FreeLanceTracker.Services.ClientService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -14,7 +14,7 @@ namespace FreeLanceTracker.Controllers;
 public class ClientController(IClientService clientService) : ControllerBase
 {
     [HttpGet("{clientId:int}")]
-    public async Task<ActionResult<GetClientDto>> GetClientIdAsync(int clientId)
+    public async Task<ActionResult<ClientDto>> GetClientIdAsync(int clientId)
     {
         var client = await clientService.GetClientIdAsync(clientId, GetUserId());
         return client is null ? NotFound() : Ok(client);

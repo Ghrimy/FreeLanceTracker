@@ -6,6 +6,10 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace FreeLanceTracker.Services.JwtTokenService;
 
+/// <summary>
+/// Service for generating JWT tokens.
+/// </summary>
+/// <param name="configuration"></param>
 public class JwtTokenService(IConfiguration configuration) : IJwtTokenService
 {
     public (string Token, DateTime ExpiresAt) GenerateToken(ApplicationUser user)

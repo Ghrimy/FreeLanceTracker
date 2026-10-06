@@ -1,6 +1,5 @@
 ﻿@page "/dashboard"
-
-@using FreeLanceTracker.DTOs.ClientDTO
+@using FreeLanceTracker.DTOs.ClientDtos
 @using FreeLanceTracker.Services
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -30,7 +29,7 @@ else
 }
 
 @code {
-    private List<GetClientDto>? clients;
+    private List<ClientDto>? clients;
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,7 +38,7 @@ else
 
         await TokenStore.InitializeAsync(authState.User);
 
-        clients = await Http.GetFromJsonAsync<List<GetClientDto>>(
+        clients = await Http.GetFromJsonAsync<List<ClientDto>>(
             "api/client/all");
     }
 }

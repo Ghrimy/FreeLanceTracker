@@ -1,4 +1,5 @@
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ProjectDtos;
 
 namespace FreeLanceTracker.Services.ProjectService;
 
@@ -7,10 +8,10 @@ namespace FreeLanceTracker.Services.ProjectService;
 /// </summary>
 public interface IProjectService
 {
-    Task<Project?> GetByIdAsync(int projectId, string userId);
-    Task<IEnumerable<Project>> GetAllProjectsForClientAsync(int clientId, string userId);
-    Task<Project> CreateAsync(Project project, string userId);
-    Task UpdateAsync(Project project, string userId);
-    Task UpdateStatusAsync(int projectId, ProjectStatus status, string userId);
+    Task<ProjectDto> GetByIdAsync(int projectId, string userId);
+    Task<IEnumerable<ProjectDto>> GetAllProjectsForClientAsync(int clientId, string userId);
+    Task<ProjectDto> CreateAsync(ProjectDto projectdto, string userId);
+    Task UpdateAsync(UpdateProjectDto projectdto, string userId);
+    Task UpdateStatusAsync(UpdateProjectStatusDto projectdto, string userId);
     Task DeleteAsync(int projectId, string userId);
 }

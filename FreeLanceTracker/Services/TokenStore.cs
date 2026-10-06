@@ -5,7 +5,11 @@ using Microsoft.AspNetCore.Identity;
 
 namespace FreeLanceTracker.Services;
 
-
+/// <summary>
+/// Stores the JWT token for the current user.
+/// </summary>
+/// <param name="userManager"></param>
+/// <param name="jwtTokenService"></param>
 public class TokenStore(
     UserManager<ApplicationUser> userManager,
     IJwtTokenService jwtTokenService)
@@ -14,17 +18,6 @@ public class TokenStore(
 
     public async Task InitializeAsync(ClaimsPrincipal user)
     {
-        Console.WriteLine("=== TokenStore.InitializeAsync ===");
-
-        Console.WriteLine(
-            $"Authenticated: {user.Identity?.IsAuthenticated}");
-
-        Console.WriteLine(
-            $"AuthenticationType: {user.Identity?.AuthenticationType}");
-
-        Console.WriteLine(
-            $"UserName: {user.Identity?.Name}");
-
         if (_token is not null)
         {
             Console.WriteLine("Token already exists.");
@@ -45,16 +38,10 @@ public class TokenStore(
             return;
         }
 
-        Console.WriteLine(
-            $"ApplicationUser found: {applicationUser.UserName}");
-
         var (token, expiresAt) =
             jwtTokenService.GenerateToken(applicationUser);
 
         _token = token;
-
-        Console.WriteLine(
-            $"JWT generated. Expires: {expiresAt}");
     }
 
     public Task<string?> GetTokenAsync()

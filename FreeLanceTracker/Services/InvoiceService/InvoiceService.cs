@@ -1,24 +1,34 @@
+using AutoMapper;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.InvoiceDtos;
+using FreeLanceTracker.DTOs.LineItemDto;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
 namespace FreeLanceTracker.Services.InvoiceService;
 
-public class InvoiceService(ApplicationDbContext context) : IInvoiceService
+public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInvoiceService
 {
-    public async Task<Invoice?> GetByIdAsync(int invoiceId, string userId)
+    public async Task<Invoice> GetByIdAsync(int invoiceId, string userId)
     {
-        var invoice = context.Invoices.Include(i => i.LineItems)
+        var invoice = await context.Invoices.Include(i => i.LineItems)
             .Where(i => i.InvoiceId == invoiceId && i.Client != null && i.Client.UserId == userId)
             .FirstOrDefaultAsync();
-        return await invoice;
+        
+        if (invoice is null) throw new NotFoundException("Invoice not found");
+   
+        
+        return invoice;
     }
 
-    public async Task<IEnumerable<Invoice>> GetByClientIdAsync(int clientId, string userId)
+    public async Task<IEnumerable<InvoiceDto>> GetByClientIdAsync(int clientId, string userId)
     {
-        var invoices = context.Invoices
+        var invoices = await context.Invoices
             .Where(i => i.ClientId == clientId && i.Client != null && i.Client.UserId == userId).ToListAsync();
-        return await invoices;
+        
+        if (invoices is null) throw new NotFoundException("Invoices not found");
+        var dtos = mapper.Map<IEnumerable<InvoiceDto>>(invoices);
+        return dtos;
     }
 
     public async Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus, string userId)
@@ -37,17 +47,29 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null) throw new NotFoundException("Invoice not found");
+        
         return invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice);
     }
+    
 
-    public async Task<InvoiceLineItem> AddLineItemAsync(InvoiceLineItem lineItem, int invoiceId, string userId)
+    //TODO: invoice line item mapper
+    public async Task<InvoiceLineItemDto> AddLineItemAsync(InvoiceLineItemDto lineItem, int invoiceId, string userId)
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null) throw new NotFoundException("Invoice not found");
-        invoice.LineItems.Add(lineItem);
+        
+        if (invoice.Status == InvoiceStatus.Paid)
+            throw new InvoiceLockedException("Cannot add a line item to a paid invoice.");
+        
+        var addLineItem = mapper.Map<InvoiceLineItem>(lineItem);
+
+        invoice.LineItems.Add(addLineItem);
         context.Invoices.Update(invoice);
+        
         await context.SaveChangesAsync();
-        return lineItem;
+        
+        var lineItemDto = mapper.Map<InvoiceLineItemDto>(addLineItem);
+        return lineItemDto;
     }
 
     public async Task DeleteLineItemAsync(int invoiceLineItemId, string userId)
@@ -64,7 +86,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
         await context.SaveChangesAsync();
     }
 
-    public async Task UpdateLineItemAsync(InvoiceLineItem lineItem, int invoiceLineItemId, string userId)
+    public async Task UpdateLineItemAsync(InvoiceLineItemDto lineItem, int invoiceLineItemId, string userId)
     {
         var existing = await context.InvoiceLineItems.Where(i => i.InvoiceLineItemId == invoiceLineItemId
                                                                  && i.Project != null
@@ -88,7 +110,7 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
 
 
     // Generates an invoice for unbilled time entries associated with the specified client and projects.
-    public async Task<Invoice> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
+    public async Task<InvoiceDto> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
         DateTime dueDate, string userId)
     {
         // Get all unbilled time entries for the specified client and projects
@@ -139,8 +161,10 @@ public class InvoiceService(ApplicationDbContext context) : IInvoiceService
 
         context.Invoices.Add(invoice);
         await context.SaveChangesAsync();
+        
 
-        return invoice;
+        var dto = mapper.Map<InvoiceDto>(invoice);
+        return dto;
     }
 
     /// <summary>

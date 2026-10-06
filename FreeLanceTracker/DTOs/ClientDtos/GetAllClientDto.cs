@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace FreeLanceTracker.DTOs.ClientDTO;
+namespace FreeLanceTracker.DTOs.ClientDtos;
 
 public class GetAllClientDto
 {

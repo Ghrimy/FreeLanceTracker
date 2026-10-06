@@ -1,6 +1,6 @@
 using AutoMapper;
 using FreeLanceTracker.Data;
-using FreeLanceTracker.DTOs.ClientDTO;
+using FreeLanceTracker.DTOs.ClientDtos;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,14 +8,14 @@ namespace FreeLanceTracker.Services.ClientService;
 
 public class ClientService(ApplicationDbContext context, IMapper clientMapper) : IClientService
 {
-    public async Task<GetClientDto> GetClientIdAsync(int clientId, string userId)
+    public async Task<ClientDto> GetClientIdAsync(int clientId, string userId)
     {
         var client = await context.Clients
             .Where(c => c.ClientId == clientId)
             .Where(c => c.UserId == userId).FirstOrDefaultAsync();
 
         if (client is null) throw new NotFoundException("Client not found");
-        var dto = clientMapper.Map<GetClientDto>(client);
+        var dto = clientMapper.Map<ClientDto>(client);
 
         return dto;
     }

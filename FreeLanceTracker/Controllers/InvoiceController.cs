@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.LineItemDto;
 using FreeLanceTracker.Services.InvoiceService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -48,14 +49,14 @@ public class InvoiceController(IInvoiceService invoiceService) : ControllerBase
     }
 
     [HttpPatch("{invoiceId:int}/line-items/{invoiceLineItemId:int}")]
-    public async Task<ActionResult> UpdateLineItemAsync(int invoiceLineItemId, InvoiceLineItem lineItem)
+    public async Task<ActionResult> UpdateLineItemAsync(int invoiceLineItemId, InvoiceLineItemDto lineItem)
     {
         await invoiceService.UpdateLineItemAsync(lineItem, invoiceLineItemId, GetUserId());
         return Ok();
     }
 
     [HttpPost("{invoiceId:int}/line-items")]
-    public async Task<ActionResult<InvoiceLineItem>> AddLineItemAsync(int invoiceId, InvoiceLineItem lineItem)
+    public async Task<ActionResult<InvoiceLineItem>> AddLineItemAsync(int invoiceId, InvoiceLineItemDto lineItem)
     {
         var invoiceLineItem = await invoiceService.AddLineItemAsync(lineItem, invoiceId, GetUserId());
         return Ok(invoiceLineItem);
