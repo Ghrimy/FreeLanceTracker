@@ -10,8 +10,8 @@ public interface IProjectService
 {
     Task<ProjectDto> GetByIdAsync(int projectId, string userId);
     Task<IEnumerable<ProjectDto>> GetAllProjectsForClientAsync(int clientId, string userId);
-    Task<ProjectDto> CreateAsync(ProjectDto projectdto, string userId);
-    Task UpdateAsync(UpdateProjectDto projectdto, string userId);
-    Task UpdateStatusAsync(UpdateProjectStatusDto projectdto, string userId);
+    Task<ProjectDto> CreateAsync(ProjectDto projectDto, string userId);
+    Task UpdateAsync(UpdateProjectDto projectDto, string userId);
+    Task UpdateStatusAsync(UpdateProjectStatusDto projectDto, string userId);
     Task DeleteAsync(int projectId, string userId);
 }

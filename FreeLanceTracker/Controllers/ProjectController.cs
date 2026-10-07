@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ProjectDtos;
 using FreeLanceTracker.Services.ProjectService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -32,14 +33,14 @@ public class ProjectController(IProjectService projectService) : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Project>> CreateAsync(Project project)
+    public async Task<ActionResult<Project>> CreateAsync(ProjectDto project)
     {
         var createProject = await projectService.CreateAsync(project, GetUserId());
         return Ok(createProject);
     }
 
     [HttpPatch("{projectId:int}")]
-    public async Task<ActionResult> UpdateAsync(int projectId, Project project)
+    public async Task<ActionResult> UpdateAsync(int projectId, UpdateProjectDto project)
     {
         if (projectId != project.ProjectId) return BadRequest("Route/body ID mismatch.");
         await projectService.UpdateAsync(project, GetUserId());
@@ -47,9 +48,11 @@ public class ProjectController(IProjectService projectService) : ControllerBase
     }
 
     [HttpPatch("{projectId:int}/update-status")]
-    public async Task<ActionResult> UpdateStatusAsync(int projectId, ProjectStatus status)
+    public async Task<ActionResult> UpdateStatusAsync(int projectId, UpdateProjectStatusDto status)
     {
-        await projectService.UpdateStatusAsync(projectId, status, GetUserId());
+        if (status.ProjectId != projectId) return BadRequest("Route/body ID mismatch.");
+        
+        await projectService.UpdateStatusAsync(status, GetUserId());
         return Ok();
     }
 

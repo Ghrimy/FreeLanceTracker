@@ -32,23 +32,15 @@ public class ClientController(IClientService clientService) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CreateClientDto>> CreateAsync(CreateClientDto clientDto)
     {
-        var client = new Client
-        {
-            Name = clientDto.Name,
-            Email = clientDto.Email,
-            Company = clientDto.Company,
-            Description = clientDto.Description
-        };
-
         var created = await clientService.CreateAsync(clientDto, GetUserId());
         return Ok(created);
     }
 
 
     [HttpPatch("{clientId:int}")]
-    public async Task<ActionResult> UpdateAsync(UpdateClientDto client)
+    public async Task<ActionResult> UpdateAsync(int clientId, UpdateClientDto client)
     {
-        if (client.ClientId == 0) throw new Exception("Client ID is required");
+        if (client.ClientId != clientId) return BadRequest("Route/body ID mismatch.");
 
         await clientService.UpdateAsync(client, GetUserId());
         return Ok();
