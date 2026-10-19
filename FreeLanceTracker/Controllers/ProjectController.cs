@@ -19,21 +19,21 @@ public class ProjectController(IProjectService projectService) : ControllerBase
     }
 
     [HttpGet("{projectId:int}")]
-    public async Task<ActionResult<Project>> GetProjectIdAsync(int projectId)
+    public async Task<ActionResult<ProjectDto>> GetProjectIdAsync(int projectId)
     {
         var project = await projectService.GetByIdAsync(projectId, GetUserId());
         return project is null ? NotFound() : Ok(project);
     }
 
     [HttpGet("all")]
-    public async Task<ActionResult<IEnumerable<Project>>> GetAllProjectsForClientAsync(int clientId)
+    public async Task<ActionResult<IEnumerable<ProjectDto>>> GetAllProjectsForClientAsync(int clientId)
     {
         var projectList = await projectService.GetAllProjectsForClientAsync(clientId, GetUserId());
         return Ok(projectList);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Project>> CreateAsync(ProjectDto project)
+    public async Task<ActionResult<ProjectDto>> CreateAsync(CreateProjectDto project)
     {
         var createProject = await projectService.CreateAsync(project, GetUserId());
         return Ok(createProject);

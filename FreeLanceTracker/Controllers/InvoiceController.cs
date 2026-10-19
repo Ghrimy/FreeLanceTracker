@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.InvoiceDtos;
 using FreeLanceTracker.DTOs.LineItemDto;
 using FreeLanceTracker.Services.InvoiceService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -19,21 +20,21 @@ public class InvoiceController(IInvoiceService invoiceService) : ControllerBase
     }
 
     [HttpGet("{invoiceId:int}")]
-    public async Task<ActionResult<Invoice>> GetByIdAsync(int invoiceId)
+    public async Task<ActionResult<InvoiceDto>> GetByIdAsync(int invoiceId)
     {
         var invoice = await invoiceService.GetByIdAsync(invoiceId, GetUserId());
         return invoice is null ? NotFound() : Ok(invoice);
     }
 
     [HttpGet("all")]
-    public async Task<ActionResult<IEnumerable<Invoice>>> GetAllAsync(int clientId)
+    public async Task<ActionResult<IEnumerable<InvoiceDto>>> GetAllAsync(int clientId)
     {
         var invoiceList = await invoiceService.GetByClientIdAsync(clientId, GetUserId());
         return Ok(invoiceList);
     }
 
     [HttpPost]
-    public async Task<ActionResult<Invoice>> GenerateInvoiceFromUnbilledTimeAsync(int clientId,
+    public async Task<ActionResult<InvoiceDto>> GenerateInvoiceFromUnbilledTimeAsync(int clientId,
         IEnumerable<int> projectIds, DateTime dueDate)
     {
         var invoice =
@@ -56,7 +57,7 @@ public class InvoiceController(IInvoiceService invoiceService) : ControllerBase
     }
 
     [HttpPost("{invoiceId:int}/line-items")]
-    public async Task<ActionResult<InvoiceLineItem>> AddLineItemAsync(int invoiceId, InvoiceLineItemDto lineItem)
+    public async Task<ActionResult<InvoiceLineItemDto>> AddLineItemAsync(int invoiceId, InvoiceLineItemDto lineItem)
     {
         var invoiceLineItem = await invoiceService.AddLineItemAsync(lineItem, invoiceId, GetUserId());
         return Ok(invoiceLineItem);

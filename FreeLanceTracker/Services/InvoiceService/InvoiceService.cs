@@ -88,10 +88,11 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
 
     public async Task UpdateLineItemAsync(InvoiceLineItemDto lineItem, int invoiceLineItemId, string userId)
     {
-        var existing = await context.InvoiceLineItems.Where(i => i.InvoiceLineItemId == invoiceLineItemId
-                                                                 && i.Project != null
-                                                                 && i.Project.Client != null
-                                                                 && i.Project.Client.UserId == userId)
+        var existing = await context.InvoiceLineItems
+            .Where(i => i.InvoiceLineItemId == invoiceLineItemId
+                        && i.Invoice != null
+                        && i.Invoice.Client != null
+                        && i.Invoice.Client.UserId == userId)
             .Include(invoiceLineItem => invoiceLineItem.Invoice).FirstOrDefaultAsync();
         if (existing is null)
             throw new NotFoundException("Invoice line item not found");
@@ -113,62 +114,75 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
     public async Task<InvoiceDto> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
         DateTime dueDate, string userId)
     {
-        // Get all unbilled time entries for the specified client and projects
-        var unbilledInvoices = await context.TimeEntries.Include(p => p.Project)
-            .Where(t => projectIds.Contains(t.ProjectId)
-                        && t.IsBillable
-                        && !t.IsBilled
-                        && t.Project != null
-                        && t.Project.Client != null
-                        && t.Project.ClientId == clientId
-                        && t.Project.Client.UserId == userId)
-            .ToListAsync();
-
-        if (!unbilledInvoices.Any())
-            throw new NotFoundException("No unbilled time entries found for the selected projects.");
-
-        // Create a new invoice
-        var invoice = new Invoice
-        {
-            ClientId = clientId,
-            IssueDate = DateTime.UtcNow,
-            DueDate = dueDate,
-            Status = InvoiceStatus.Draft,
-            InvoiceNumber = await GenerateInvoiceNumberAsync(),
-            LineItems = new List<InvoiceLineItem>()
-        };
-
-        var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
-
-        // Calculate total hours for each project and adds it as one item instead of individual items
-        foreach (var group in groupedByProject)
-        {
-            var project = group.Key;
-            var totalHours = group.Sum(t => t.Hours);
-
-            invoice.LineItems.Add(new InvoiceLineItem
-            {
-                Description = $"{project.Name} — {totalHours}h",
-                Quantity = totalHours,
-                UnitPrice = project.HourlyRate,
-                ProjectId = project.ProjectId
-            });
-        }
-
-        // Mark all time entries as billed
-        foreach (var entry in unbilledInvoices)
-            entry.IsBilled = true;
-
-        context.Invoices.Add(invoice);
-        await context.SaveChangesAsync();
         
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        
+        try
+        {
+                // Get all unbilled time entries for the specified client and projects
+                var unbilledInvoices = await context.TimeEntries.Include(p => p.Project)
+                    .Where(t => projectIds.Contains(t.ProjectId)
+                                && t.IsBillable
+                                && !t.IsBilled
+                                && t.Project != null
+                                && t.Project.Client != null
+                                && t.Project.ClientId == clientId
+                                && t.Project.Client.UserId == userId)
+                    .ToListAsync();
 
-        var dto = mapper.Map<InvoiceDto>(invoice);
-        return dto;
+                if (!unbilledInvoices.Any())
+                    throw new NotFoundException("No unbilled time entries found for the selected projects.");
+
+                // Create a new invoice
+                var invoice = new Invoice
+                {
+                    ClientId = clientId,
+                    IssueDate = DateTime.UtcNow,
+                    DueDate = dueDate,
+                    Status = InvoiceStatus.Draft,
+                    InvoiceNumber = await GenerateInvoiceNumberAsync(),
+                    LineItems = new List<InvoiceLineItem>()
+                };
+
+                var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
+
+                // Calculate total hours for each project and adds it as one item instead of individual items
+                foreach (var group in groupedByProject)
+                {
+                    var project = group.Key;
+                    var totalHours = group.Sum(t => t.Hours);
+
+                    invoice.LineItems.Add(new InvoiceLineItem
+                    {
+                        Description = $"{project.Name} — {totalHours}h",
+                        Quantity = totalHours,
+                        UnitPrice = project.HourlyRate,
+                        ProjectId = project.ProjectId
+                    });
+                }
+
+                // Mark all time entries as billed
+                foreach (var entry in unbilledInvoices)
+                    entry.IsBilled = true;
+
+        
+                context.Invoices.Add(invoice);
+                await context.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                var dto = mapper.Map<InvoiceDto>(invoice);
+                return dto;
+        }
+        catch (Exception)
+        {
+                await transaction.RollbackAsync();
+                throw;
+        }
     }
 
     /// <summary>
-    ///     Generates a unique invoice number based on the current year and the count of invoices issued in that year.
+    /// TODO: Will need updating.
+    /// Generates a unique invoice number based on the current year and the count of invoices issued in that year.
     /// </summary>
     private async Task<string> GenerateInvoiceNumberAsync()
     {

@@ -20,6 +20,7 @@ using Microsoft.OpenApi;
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
+
 // ---- Razor Components / Blazor ----
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -111,7 +112,7 @@ authBuilder.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
 
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Event API", Version = "v1" });
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Freelance Tracker API", Version = "v1" });
 
     // Add JWT Authentication
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -148,6 +149,8 @@ if (app.Environment.IsDevelopment())
     app.UseMigrationsEndPoint();
     app.UseSwagger();
     app.UseSwaggerUI();
+    
+    
 }
 else
 {

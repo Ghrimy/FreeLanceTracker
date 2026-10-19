@@ -21,6 +21,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         //TODO: Configure table relationships here
         //TODO: Configure table properties here (e.g. decimal places etc.)
         base.OnModelCreating(modelBuilder);
+        
+        //indexes the db making searching it faster.
+        modelBuilder.Entity<Client>().HasIndex(c => c.UserId);
+        modelBuilder.Entity<Project>().HasIndex(p => new { p.ClientId, p.Status });
+        modelBuilder.Entity<TimeEntry>().HasIndex(t => new { t.ProjectId, t.IsBilled, t.IsBillable });
+        modelBuilder.Entity<Invoice>().HasIndex(i => new { i.ClientId, i.Status });
 
         modelBuilder.Entity<TimeEntry>().Property(d => d.Date).HasColumnType("date");
         modelBuilder.Entity<TimeEntry>().Property(d => d.Hours).HasColumnType("decimal(6,2)");

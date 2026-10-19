@@ -28,7 +28,7 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
         return dtos;
     }
 
-    public async Task<ProjectDto> CreateAsync(ProjectDto project, string userId)
+    public async Task<ProjectDto> CreateAsync(CreateProjectDto project, string userId)
     {
         var client =
             await context.Clients.FirstOrDefaultAsync(c => c.ClientId == project.ClientId && c.UserId == userId);

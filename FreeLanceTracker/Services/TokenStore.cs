@@ -12,7 +12,8 @@ namespace FreeLanceTracker.Services;
 /// <param name="jwtTokenService"></param>
 public class TokenStore(
     UserManager<ApplicationUser> userManager,
-    IJwtTokenService jwtTokenService)
+    IJwtTokenService jwtTokenService,
+    ILogger<TokenStore> logger)
 {
     private string? _token;
 
@@ -20,13 +21,13 @@ public class TokenStore(
     {
         if (_token is not null)
         {
-            Console.WriteLine("Token already exists.");
+            logger.LogInformation("Token already exists.");
             return;
         }
 
         if (user.Identity?.IsAuthenticated != true)
         {
-            Console.WriteLine("User is NOT authenticated.");
+            logger.LogInformation("User is NOT authenticated.");
             return;
         }
 
@@ -34,7 +35,7 @@ public class TokenStore(
 
         if (applicationUser is null)
         {
-            Console.WriteLine("UserManager.GetUserAsync returned NULL.");
+            logger.LogInformation("UserManager.GetUserAsync returned NULL.");
             return;
         }
 
@@ -46,9 +47,6 @@ public class TokenStore(
 
     public Task<string?> GetTokenAsync()
     {
-        Console.WriteLine(
-            $"GetTokenAsync: token exists = {_token is not null}");
-
         return Task.FromResult(_token);
     }
 }

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.TimeEntryDtos;
 using FreeLanceTracker.Services.TimeEntryService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -18,21 +19,21 @@ public class TimeEntryController(ITimeEntryService timeEntryService) : Controlle
     }
 
     [HttpGet("{projectId:int}")]
-    public async Task<ActionResult<IEnumerable<TimeEntry>>> GetAllForProjectAsync(int projectId)
+    public async Task<ActionResult<IEnumerable<TimeEntryDto>>> GetAllForProjectAsync(int projectId)
     {
         var timeEntries = await timeEntryService.GetAllForProjectAsync(projectId, GetUserId());
         return Ok(timeEntries);
     }
 
     [HttpGet("unbilled")]
-    public async Task<ActionResult<IEnumerable<TimeEntry>>> GetUnbilledByProjectIdsAsync(IEnumerable<int> projectIds)
+    public async Task<ActionResult<IEnumerable<TimeEntryDto>>> GetUnbilledByProjectIdsAsync([FromBody]IEnumerable<int> projectIds)
     {
         var timeEntries = await timeEntryService.GetUnbilledByProjectIdsAsync(projectIds, GetUserId());
         return Ok(timeEntries);
     }
 
     [HttpPost("{projectId:int}/log-time")]
-    public async Task<ActionResult<TimeEntry>> LogTimeAsync(int projectId, TimeEntry timeEntry)
+    public async Task<ActionResult<TimeEntryDto>> LogTimeAsync(int projectId, TimeEntry timeEntry)
     {
         if (projectId != timeEntry.ProjectId) return BadRequest("Route/body project ID mismatch.");
         var createdTimeEntry = await timeEntryService.LogTimeAsync(timeEntry, GetUserId());

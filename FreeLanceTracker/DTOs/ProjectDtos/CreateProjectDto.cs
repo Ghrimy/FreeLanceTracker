@@ -1,0 +1,18 @@
+using System.ComponentModel.DataAnnotations;
+using FreeLanceTracker.Data;
+using FreeLanceTracker.DTOs.ClientDtos;
+using FreeLanceTracker.DTOs.TimeEntryDtos;
+
+namespace FreeLanceTracker.DTOs.ProjectDtos;
+
+public class CreateProjectDto
+{
+    [Required] public int ProjectId { get; set; }
+    [Required] [StringLength(50)] public string Name { get; set; } = string.Empty;
+    [StringLength(200)] public string? Description { get; set; }
+    [Required] public ProjectStatus Status { get; set; }
+    [Required] public decimal HourlyRate { get; set; }
+    [Required] public DateTime StartDate { get; set; }
+    [Required] public int ClientId { get; set; }
+    
+}

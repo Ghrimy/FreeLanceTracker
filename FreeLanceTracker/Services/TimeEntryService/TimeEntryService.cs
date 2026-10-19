@@ -77,7 +77,7 @@ public class TimeEntryService(ApplicationDbContext context) : ITimeEntryService
         if (existing is null) throw new NotFoundException("Time entry not found");
 
         if (existing.IsBilled)
-            throw new TimeEntryLockedException("Cannot edit a time entry that has already been billed.");
+            throw new TimeEntryLockedException("Cannot delete a time entry that has already been billed.");
 
         context.TimeEntries.Remove(existing);
         await context.SaveChangesAsync();
