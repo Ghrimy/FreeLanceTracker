@@ -60,7 +60,7 @@ builder.Services.AddScoped(sp =>
 
     return new HttpClient(handler)
     {
-        BaseAddress = new Uri("https://localhost:7191")
+        BaseAddress = new Uri(configuration["ApiUrl"] ?? throw new InvalidOperationException())
     };
 });
 

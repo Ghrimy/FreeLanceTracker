@@ -13,4 +13,5 @@ public interface IClientService
     Task<Client> CreateAsync(CreateClientDto client, string userId);
     Task UpdateAsync(UpdateClientDto client, string userId);
     Task ArchiveAsync(int clientId, string userId);
+    Task DeleteAsync(int clientId, string userId);
 }

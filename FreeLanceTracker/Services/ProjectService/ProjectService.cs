@@ -28,6 +28,19 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
         return dtos;
     }
 
+    public async Task<IEnumerable<ProjectDto>> GetRecentForUserAsync(string userId)
+    {
+        var projects = await context.Projects.AsNoTracking()
+            .Include(p => p.Client)
+            .Where(p => p.Client != null && p.Client.UserId == userId && !p.Client.IsArchived)
+            .OrderByDescending(p => p.UpdatedAtUtc ?? p.CreatedAtUtc)
+            .ThenByDescending(p => p.ProjectId)
+            .Take(6)
+            .ToListAsync();
+
+        return mapper.Map<IEnumerable<ProjectDto>>(projects);
+    }
+
     public async Task<ProjectDto> CreateAsync(CreateProjectDto project, string userId)
     {
         var client =
@@ -40,9 +53,10 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
             Description = project.Description,
             Client = client,
             ClientId = client.ClientId,
-            Status = ProjectStatus.Active,
+            Status = project.Status,
             HourlyRate = project.HourlyRate,
             StartDate = project.StartDate,
+            CreatedAtUtc = DateTime.UtcNow,
             TimeEntries = new List<TimeEntry>()
         };
 
@@ -62,8 +76,10 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
 
         existing.Name = project.Name;
         existing.Description = project.Description;
+        existing.Status = project.Status;
         existing.HourlyRate = project.HourlyRate;
         existing.StartDate = project.StartDate;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
         context.Projects.Update(existing);
         await context.SaveChangesAsync();
     }
@@ -74,6 +90,7 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
             .FirstOrDefaultAsync(p => p.ProjectId == projectdto.ProjectId && p.Client != null && p.Client.UserId == userId);
         if (project is null) throw new NotFoundException("Project not found");
         project.Status = projectdto.Status;
+        project.UpdatedAtUtc = DateTime.UtcNow;
         await context.SaveChangesAsync();
     }
 
@@ -82,6 +99,11 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
         var project = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
         if (project is null) throw new NotFoundException("Project not found");
+        if (await context.TimeEntries.AnyAsync(t => t.ProjectId == projectId)
+            || await context.InvoiceLineItems.AnyAsync(i => i.ProjectId == projectId))
+        {
+            throw new System.ComponentModel.DataAnnotations.ValidationException("Remove unbilled time entries first. Keep projects with billing history and mark them completed instead.");
+        }
         context.Projects.Remove(project);
         await context.SaveChangesAsync();
     }

@@ -1,3 +1,64 @@
+.app-shell {
+    max-width: 1200px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 3rem);
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.app-navigation {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.app-navigation ::deep a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: .65rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: .5rem;
+    color: var(--text-primary);
+    background: var(--surface);
+    font-weight: 650;
+    text-decoration: none;
+}
+
+.app-navigation ::deep a:hover,
+.app-navigation ::deep a.active {
+    border-color: var(--accent);
+    background: var(--accent-surface);
+}
+
+.page-content {
+    padding: 2rem 0 3rem;
+}
+
+.page-content ::deep h1 {
+    margin: 0 0 .75rem;
+    font-size: clamp(2rem, 4vw, 2.75rem);
+    font-weight: 700;
+    letter-spacing: -.04em;
+    line-height: 1.2;
+}
+
+@media (max-width: 640px) {
+    .app-header { align-items: flex-start; flex-direction: column; }
+    .app-navigation { width: 100%; }
+    .app-navigation ::deep a { flex: 1 1 auto; }
+}
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;

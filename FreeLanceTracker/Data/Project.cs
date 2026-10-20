@@ -20,6 +20,8 @@ public class Project
     public ProjectStatus Status { get; set; }
     public decimal HourlyRate { get; set; }
     public DateTime StartDate { get; set; }
+    public DateTime? CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
 
     //relationships
     public int ClientId { get; set; }

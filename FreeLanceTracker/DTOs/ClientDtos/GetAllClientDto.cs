@@ -4,6 +4,7 @@ namespace FreeLanceTracker.DTOs.ClientDtos;
 
 public class GetAllClientDto
 {
+    public bool IsArchived { get; set; }
     [Required] public int ClientId { get; set; }
     [Required] public string Name { get; set; } = string.Empty;
     [Required] public string Email { get; set; } = string.Empty;

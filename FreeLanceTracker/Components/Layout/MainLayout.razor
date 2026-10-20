@@ -1,6 +1,28 @@
 ﻿@inherits LayoutComponentBase
 
-@Body
+<div class="app-shell">
+    <header class="app-header">
+        <a class="brand" href="/">FreeLanceTracker</a>
+        <nav class="app-navigation" aria-label="Main navigation">
+            <NavLink href="/" Match="NavLinkMatch.All">Home</NavLink>
+            <AuthorizeView>
+                <Authorized>
+                    <NavLink href="/dashboard">Dashboard</NavLink>
+                    <NavLink href="/clients">Clients</NavLink>
+                    <NavLink href="/projects">Projects</NavLink>
+                    <NavLink href="/invoices">Invoices</NavLink>
+                </Authorized>
+                <NotAuthorized>
+                    <NavLink href="/login">Log in</NavLink>
+                    <NavLink href="/register">Register</NavLink>
+                </NotAuthorized>
+            </AuthorizeView>
+        </nav>
+    </header>
+    <div class="page-content">
+        @Body
+    </div>
+</div>
 
 <div id="blazor-error-ui" data-nosnippet>
     An unhandled error has occurred.

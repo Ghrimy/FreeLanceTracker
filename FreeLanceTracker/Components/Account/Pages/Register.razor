@@ -1,5 +1,6 @@
-﻿@page "/Account/Register"
+﻿@page "/register"
 @using System.ComponentModel.DataAnnotations
+@page "/Account/Register"
 @using System.Text
 @using System.Text.Encodings.Web
 @using FreeLanceTracker.Data
@@ -16,7 +17,11 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<main class="auth-page">
+<header class="auth-header">
+    <h1>Register</h1>
+    <p>Your freelance workspace starts here.</p>
+</header>
 
 <div class="row">
     <div class="col-lg-6">
@@ -56,6 +61,8 @@
         </section>
     </div>
 </div>
+<p class="auth-footer">Already have an account? <a href="@(NavigationManager.GetUriWithQueryParameters("Account/Login", new Dictionary<string, object?> { ["ReturnUrl"] = ReturnUrl }))">Log in</a></p>
+</main>
 
 @code {
     private IEnumerable<IdentityError>? identityErrors;

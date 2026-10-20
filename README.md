@@ -14,7 +14,8 @@ Features
     Client management with multiple projects per client
     Time entry logging against projects (billable / non-billable)
     Generate invoices directly from unbilled time entries — the core feature
-    Dashboard: outstanding balance, revenue by client, hours logged this period
+    Dashboard: active clients and six most recently added or edited projects
+    Separate Clients, Projects (including time entries), and Invoices management pages
     Invoice state machine with guard rules (e.g. can't edit a sent invoice)
 
 Tech stack:
@@ -25,6 +26,13 @@ Tech stack:
     Data EF Core + SQL Server
 
 A 3-layer separation (UI → Application → Data) rather than putting logic in code-behind or controllers directly — keeps business rules testable and framework-agnostic.
+
+Project activity tracking
+
+- Apply the `AddProjectActivityTimestamps` migration before using the updated dashboard:
+  `dotnet ef database update --project FreeLanceTracker\FreeLanceTracker.csproj`
+- New projects and project edits record UTC activity dates. Existing projects keep unknown dates until edited; no historical dates are invented.
+- The dashboard excludes archived clients and their projects. Their history remains available on the management pages.
 
 
 Progress

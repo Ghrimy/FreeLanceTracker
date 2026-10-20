@@ -73,4 +73,20 @@ public class ClientService(ApplicationDbContext context, IMapper clientMapper) :
         client.IsArchived = true;
         await context.SaveChangesAsync();
     }
+
+    public async Task DeleteAsync(int clientId, string userId)
+    {
+        var client = await context.Clients
+            .FirstOrDefaultAsync(c => c.ClientId == clientId && c.UserId == userId);
+        if (client is null) throw new NotFoundException("Client not found");
+
+        if (await context.Projects.AnyAsync(p => p.ClientId == clientId)
+            || await context.Invoices.AnyAsync(i => i.ClientId == clientId))
+        {
+            throw new System.ComponentModel.DataAnnotations.ValidationException("Clients with projects or invoices cannot be deleted. Remove empty projects first, or archive the client to preserve their history.");
+        }
+
+        context.Clients.Remove(client);
+        await context.SaveChangesAsync();
+    }
 }

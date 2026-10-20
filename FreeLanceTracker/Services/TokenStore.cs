@@ -39,9 +39,8 @@ public class TokenStore(
             return;
         }
 
-        var (token, expiresAt) =
-            jwtTokenService.GenerateToken(applicationUser);
-
+        var (token, expiresAt) = jwtTokenService.GenerateToken(applicationUser);
+        
         _token = token;
     }
 

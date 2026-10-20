@@ -4,6 +4,7 @@ using FreeLanceTracker.DTOs.ClientDtos;
 using FreeLanceTracker.DTOs.InvoiceDtos;
 using FreeLanceTracker.DTOs.LineItemDto;
 using FreeLanceTracker.DTOs.ProjectDtos;
+using FreeLanceTracker.DTOs.TimeEntryDtos;
 
 namespace FreeLanceTracker.MappingProfile;
 
@@ -36,6 +37,7 @@ public class MappingProfile : Profile
         CreateMap<InvoiceLineItemDto, InvoiceLineItem>();
         
         //TimeEntry
+        CreateMap<TimeEntry, TimeEntryDto>();
         CreateMap<TimeEntry, InvoiceLineItemDto>();
         CreateMap<InvoiceLineItemDto, TimeEntry>();
         

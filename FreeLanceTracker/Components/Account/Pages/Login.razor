@@ -1,5 +1,6 @@
-﻿@page "/Account/Login"
+﻿@page "/login"
 @using System.ComponentModel.DataAnnotations
+@page "/Account/Login"
 @using FreeLanceTracker.Data
 @using FreeLanceTracker.Services
 @using FreeLanceTracker.Services.JwtTokenService
@@ -18,7 +19,11 @@
 
 <PageTitle>Log in</PageTitle>
 
-<h1>Log in</h1>
+<main class="auth-page">
+<header class="auth-header">
+    <h1>Log in</h1>
+    <p>Pick up where you left off in your workspace.</p>
+</header>
 <div class="row">
     <div class="col-lg-6">
         <section>
@@ -80,6 +85,7 @@
         </section>
     </div>
 </div>
+</main>
 
 @code {
     private string? errorMessage;

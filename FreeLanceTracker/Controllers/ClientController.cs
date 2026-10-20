@@ -53,6 +53,13 @@ public class ClientController(IClientService clientService) : ControllerBase
         return Ok();
     }
 
+    [HttpDelete("{clientId:int}")]
+    public async Task<ActionResult> DeleteAsync(int clientId)
+    {
+        await clientService.DeleteAsync(clientId, GetUserId());
+        return NoContent();
+    }
+
     private string GetUserId()
     {
         return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();

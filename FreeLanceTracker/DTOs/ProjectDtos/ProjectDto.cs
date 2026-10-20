@@ -13,6 +13,8 @@ public class ProjectDto
     [Required] public ProjectStatus Status { get; set; }
     [Required] public decimal HourlyRate { get; set; }
     [Required] public DateTime StartDate { get; set; }
+    public DateTime? CreatedAtUtc { get; set; }
+    public DateTime? UpdatedAtUtc { get; set; }
 
     //relationships
     [Required] public int ClientId { get; set; }

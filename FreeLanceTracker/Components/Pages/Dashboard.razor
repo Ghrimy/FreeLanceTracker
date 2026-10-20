@@ -1,44 +1,149 @@
 ﻿@page "/dashboard"
 @using FreeLanceTracker.DTOs.ClientDtos
-@using FreeLanceTracker.Services
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Security.Claims
+@using FreeLanceTracker.Services.ClientService
+@using FreeLanceTracker.Services.ProjectService
+@using FreeLanceTracker.DTOs.ProjectDtos
 
 @inject AuthenticationStateProvider AuthenticationStateProvider
-@inject TokenStore TokenStore
-@inject HttpClient Http
+@inject IServiceScopeFactory ScopeFactory
+@inject ILogger<Dashboard> Logger
 
 <PageTitle>Dashboard</PageTitle>
 
-<h3>My Clients</h3>
+<main class="dashboard">
+    <div class="dashboard-content">
+        <header class="dashboard-header">
+            <h1>Dashboard</h1>
+            <p class="dashboard-description">An overview of your clients and recently added or edited projects.</p>
+        </header>
 
-@if (clients is null)
-{
-    <p>Loading...</p>
-}
-else if (!clients.Any())
-{
-    <p>No clients yet.</p>
-}
-else
-{
-    <ul>
-        @foreach (var client in clients)
-        {
-            <li>@client.Name — @client.Email</li>
-        }
-    </ul>
-}
+        <section class="clients-panel" aria-labelledby="clients-heading" aria-busy="@(clients is null && error is null ? "true" : "false")">
+            <div class="panel-header">
+                <div>
+                    <h2 id="clients-heading">My Clients</h2>
+                    <p>The people and businesses you work with.</p>
+                </div>
+                @if (clients is not null)
+                {
+                    <span class="client-count">@clients.Count @(clients.Count == 1 ? "client" : "clients")</span>
+                }
+            </div>
+
+            @if (error is not null)
+            {
+                <div class="panel-state" role="alert"><p>@error</p><button class="button-secondary" @onclick="LoadClients">Try again</button></div>
+            }
+            else if (clients is null)
+            {
+                <div class="panel-state" role="status">
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    <p>Loading your clients...</p>
+                </div>
+            }
+            else if (!clients.Any())
+            {
+                <div class="panel-state">
+                    <h3>No clients yet</h3>
+                    <p>Your clients will appear here once they have been added.</p>
+                    <a class="button-primary" href="clients">Go to clients</a>
+                </div>
+            }
+            else
+            {
+                <ul class="client-list">
+                    @foreach (var client in clients)
+                    {
+                        <li class="client-card">
+                            <span class="client-icon" aria-hidden="true">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                                    <circle cx="12" cy="8" r="4" />
+                                    <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
+                                </svg>
+                            </span>
+                            <div class="client-details">
+                                <h3>@client.Name</h3>
+                                <p>@client.Email</p>
+                                <p>@client.Company</p>
+                                <a class="button-secondary" href="@($"projects?client={client.ClientId}")">View projects</a>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+        <section class="clients-panel recent-projects" aria-labelledby="projects-heading">
+            <div class="panel-header">
+                <div><h2 id="projects-heading">Recent projects</h2><p>Your six most recently added or edited projects, newest activity first.</p></div>
+                <a class="button-secondary" href="projects">All projects</a>
+            </div>
+            @if (error is not null)
+            {
+                <div class="panel-state"><p>Project activity is unavailable. Use the retry button above to reload.</p></div>
+            }
+            else if (recentProjects is null)
+            {
+                <div class="panel-state" role="status"><p>Loading recent projects...</p></div>
+            }
+            else if (recentProjects.Count == 0)
+            {
+                <div class="panel-state"><h3>No projects yet</h3><p>Projects for your active clients will appear here.</p><a class="button-secondary" href="projects">Go to projects</a></div>
+            }
+            else
+            {
+                <ul class="client-list">
+                    @foreach (var project in recentProjects)
+                    {
+                        <li class="client-card">
+                            <div class="client-details">
+                                <h3>@project.Name</h3>
+                                <p>@project.Client.Name · @project.Status</p>
+                                <p>@project.Description</p>
+                                @if ((project.UpdatedAtUtc ?? project.CreatedAtUtc) is DateTime activity)
+                                {
+                                    <p>@(project.UpdatedAtUtc.HasValue ? "Edited" : "Added") <time datetime="@(activity.ToString("O"))">@activity.ToString("dd MMM yyyy HH:mm") UTC</time></p>
+                                }
+                                else
+                                {
+                                    <p>Older project · activity date unavailable</p>
+                                }
+                                <a class="button-secondary" href="@($"projects?client={project.ClientId}&project={project.ProjectId}")">View project</a>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    </div>
+</main>
 
 @code {
-    private List<ClientDto>? clients;
+    private List<GetAllClientDto>? clients;
+    private List<ProjectDto>? recentProjects;
+    private string? error;
 
-    protected override async Task OnInitializedAsync()
+    protected override Task OnInitializedAsync() => LoadClients();
+
+    private async Task LoadClients()
     {
-        var authState =
-            await AuthenticationStateProvider.GetAuthenticationStateAsync();
-
-        await TokenStore.InitializeAsync(authState.User);
-
-        clients = await Http.GetFromJsonAsync<List<ClientDto>>(
-            "api/client/all");
+        error = null;
+        clients = null;
+        recentProjects = null;
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var userId = authState.User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId is null) throw new UnauthorizedAccessException();
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            var service = scope.ServiceProvider.GetRequiredService<IClientService>();
+            clients = (await service.GetAllForUserAsync(userId)).Where(c => !c.IsArchived).ToList();
+            recentProjects = (await scope.ServiceProvider.GetRequiredService<IProjectService>().GetRecentForUserAsync(userId)).ToList();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Unable to load dashboard overview");
+            error = "Unable to load your overview. Please try again.";
+        }
     }
 }

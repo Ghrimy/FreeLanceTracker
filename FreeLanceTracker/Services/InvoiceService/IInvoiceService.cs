@@ -9,6 +9,7 @@ namespace FreeLanceTracker.Services.InvoiceService;
 /// </summary>
 public interface IInvoiceService
 {
+    Task<InvoiceDto> CreateDraftAsync(int clientId, DateTime dueDate, string userId);
     Task<Invoice> GetByIdAsync(int invoiceId, string userId);
     Task<IEnumerable<InvoiceDto>> GetByClientIdAsync(int clientId, string userId);
     Task UpdateStatusAsync(int invoiceId, InvoiceStatus newStatus, string userId);
