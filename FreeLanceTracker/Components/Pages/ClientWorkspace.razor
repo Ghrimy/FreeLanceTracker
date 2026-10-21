@@ -1,0 +1,139 @@
+@page "/clients"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.ComponentModel.DataAnnotations
+@using System.Security.Claims
+@using FreeLanceTracker.DTOs.ClientDtos
+@using FreeLanceTracker.Services.ClientService
+@inject AuthenticationStateProvider Auth
+@inject IServiceScopeFactory ScopeFactory
+@inject ILogger<ClientWorkspace> Logger
+
+<PageTitle>Clients</PageTitle>
+<main class="client-workspace" aria-busy="@busy">
+    <header>
+        <h1>Clients</h1>
+        <p>Manage your clients and open their projects to manage project work and time.</p>
+    </header>
+    @if (error is not null) { <p class="error" role="alert">@error</p> }
+    @if (message is not null) { <p role="status">@message</p> }
+    @if (pending is not null)
+    {
+        <section class="confirmation" role="alert" aria-label="Confirm client operation">
+            <p>@confirmation</p>
+            <button disabled="@busy" @onclick="Confirm">Confirm</button>
+            <button disabled="@busy" @onclick="() => pending = null">Cancel</button>
+        </section>
+    }
+    <fieldset disabled="@(busy || userId is null || pending is not null)">
+        <section aria-labelledby="client-list-heading">
+            <h2 id="client-list-heading">Your clients</h2>
+            <label><input type="checkbox" @bind="showArchived" /> Show archived clients</label>
+            <div class="cards">
+                @foreach (var c in clients.Where(c => showArchived || !c.IsArchived))
+                {
+                    <article>
+                        <h3>@c.Name @(c.IsArchived ? "(archived)" : "")</h3>
+                        <p>@c.Email · @c.Company</p>
+                        <p>@c.Description</p>
+                        <div class="card-actions">
+                            <a class="project-link" href="@($"/projects?client={c.ClientId}")">Manage projects</a>
+                            <button @onclick="() => EditClient(c)">Edit client</button>
+                            @if (!c.IsArchived) { <button @onclick="() => Archive(c)">Archive</button> }
+                            <button class="danger" @onclick="() => DeleteClient(c)">Delete client</button>
+                        </div>
+                    </article>
+                }
+            </div>
+            @if (!busy && clients.Count == 0) { <p>No clients yet. Add your first client below.</p> }
+            else if (!busy && !showArchived && clients.All(c => c.IsArchived)) { <p>No active clients. Show archived clients or add a new client below.</p> }
+        </section>
+        <section aria-labelledby="client-editor-heading">
+            <EditForm Model="clientForm" OnValidSubmit="SaveClient" FormName="client-editor" id="client-editor">
+                <DataAnnotationsValidator />
+                <h2 id="client-editor-heading">@(clientForm.Id == 0 ? "Add client" : "Edit client")</h2>
+                <ValidationSummary />
+                <label for="client-name">Name</label>
+                <InputText id="client-name" @bind-Value="clientForm.Name" maxlength="30" />
+                <label for="client-email">Email</label>
+                <InputText id="client-email" type="email" @bind-Value="clientForm.Email" maxlength="50" />
+                <label for="client-company">Company</label>
+                <InputText id="client-company" @bind-Value="clientForm.Company" maxlength="50" />
+                <label for="client-description">Description</label>
+                <InputTextArea id="client-description" @bind-Value="clientForm.Description" maxlength="200" />
+                <div>
+                    <button type="submit">Save client</button>
+                    <button type="button" @onclick="() => clientForm = new()">Clear</button>
+                </div>
+            </EditForm>
+        </section>
+    </fieldset>
+    @if (busy) { <p role="status">Working…</p> }
+</main>
+
+@code {
+    private string? userId, error, message, confirmation;
+    private bool busy, showArchived;
+    private List<GetAllClientDto> clients = [];
+    private ClientForm clientForm = new();
+    private Func<Task>? pending;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userId = (await Auth.GetAuthenticationStateAsync()).User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (userId is not null) await Run(LoadClients);
+    }
+
+    private async Task Run(Func<IServiceProvider, Task> action, string? success = null)
+    {
+        if (busy || userId is null) return;
+        busy = true; error = null; message = null;
+        try { await using var scope = ScopeFactory.CreateAsyncScope(); await action(scope.ServiceProvider); message = success; }
+        catch (Exception ex) when (ex is ValidationException or FreeLanceTracker.Middleware.NotFoundException) { error = ex.Message; }
+        catch (Exception ex) { Logger.LogError(ex, "Client operation failed"); error = "Unable to complete the operation. Please try again."; }
+        finally { busy = false; }
+    }
+
+    private async Task LoadClients(IServiceProvider sp) => clients = (await sp.GetRequiredService<IClientService>().GetAllForUserAsync(userId!)).ToList();
+    private void EditClient(GetAllClientDto c) => clientForm = new() { Id = c.ClientId, Name = c.Name, Email = c.Email, Company = c.Company, Description = c.Description };
+
+    private Task SaveClient() => Run(async sp =>
+    {
+        var service = sp.GetRequiredService<IClientService>();
+        if (clientForm.Id == 0) await service.CreateAsync(new() { Name = clientForm.Name.Trim(), Email = clientForm.Email.Trim(), Company = clientForm.Company, Description = clientForm.Description }, userId!);
+        else await service.UpdateAsync(new() { ClientId = clientForm.Id, Name = clientForm.Name.Trim(), Email = clientForm.Email.Trim(), Company = clientForm.Company, Description = clientForm.Description }, userId!);
+        clientForm = new(); await LoadClients(sp);
+    }, "Client saved.");
+
+    private void Archive(GetAllClientDto c)
+    {
+        confirmation = $"Archive {c.Name}? Billing history will be preserved.";
+        pending = () => Run(async sp =>
+        {
+            await sp.GetRequiredService<IClientService>().ArchiveAsync(c.ClientId, userId!);
+            if (clientForm.Id == c.ClientId) clientForm = new();
+            await LoadClients(sp);
+        }, "Client archived.");
+    }
+
+    private void DeleteClient(GetAllClientDto c)
+    {
+        confirmation = $"Permanently delete {c.Name}? Clients with projects or invoices must be archived instead.";
+        pending = () => Run(async sp =>
+        {
+            await sp.GetRequiredService<IClientService>().DeleteAsync(c.ClientId, userId!);
+            if (clientForm.Id == c.ClientId) clientForm = new();
+            await LoadClients(sp);
+        }, "Client deleted.");
+    }
+
+    private async Task Confirm() { var action = pending; pending = null; if (action is not null) await action(); }
+
+    private sealed class ClientForm
+    {
+        public int Id { get; set; }
+        [Required, StringLength(30)] public string Name { get; set; } = "";
+        [Required, EmailAddress, StringLength(50)] public string Email { get; set; } = "";
+        [StringLength(50)] public string Company { get; set; } = "";
+        [StringLength(200)] public string Description { get; set; } = "";
+    }
+}

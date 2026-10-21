@@ -1,0 +1,322 @@
+@page "/invoices"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@using System.Security.Claims
+@using FreeLanceTracker.Data
+@using FreeLanceTracker.DTOs.ClientDtos
+@using FreeLanceTracker.DTOs.ProjectDtos
+@using FreeLanceTracker.DTOs.InvoiceDtos
+@using FreeLanceTracker.DTOs.LineItemDto
+@using FreeLanceTracker.Services.ClientService
+@using FreeLanceTracker.Services.ProjectService
+@using FreeLanceTracker.Services.InvoiceService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IClientService ClientService
+@inject IProjectService ProjectService
+@inject IInvoiceService InvoiceService
+@inject ILogger<InvoiceWorkspace> Logger
+
+<PageTitle>Invoices</PageTitle>
+
+<main class="invoice-workspace" aria-busy="@busy">
+    <header>
+        <h1>Invoices</h1>
+        <p>Create drafts, bill project work, and track payments.</p>
+    </header>
+    @if (error is not null)
+    {
+        <div class="error" role="alert">@error</div>
+    }
+    @if (message is not null)
+    {
+        <p class="notice" role="status">@message</p>
+    }
+    @if (busy)
+    {
+        <p role="status">Working…</p>
+    }
+    <fieldset disabled="@busy" class="workspace-controls">
+        <section class="panel">
+            <label for="invoice-client">Client</label>
+            <select id="invoice-client" value="@clientId" @onchange="ChangeClientAsync">
+                <option value="0">Select a client</option>
+                @foreach (var client in clients)
+                {
+                    <option value="@client.ClientId">@client.Name</option>
+                }
+            </select>
+            @if (!busy && clients.Count == 0)
+            {
+                <p>No clients available. Create a client before making an invoice.</p>
+            }
+        </section>
+        @if (clientId > 0)
+        {
+            <section class="panel">
+                <h2>New invoice</h2>
+                <p>Create an empty draft to add products or materials used on a project. You can also add them to a draft generated from time entries.</p>
+                <form @onsubmit="CreateAsync" @onsubmit:preventDefault>
+                    <label for="invoice-due">Due date</label>
+                    <input id="invoice-due" type="date" @bind="dueDate" required />
+                    <label class="check"><input type="checkbox" @bind="fromTime" /> Generate from unbilled time</label>
+                    @if (fromTime)
+                    {
+                        <p>Select projects with billable, unbilled time. Creating the invoice marks that time as billed.</p>
+                        <p class="notice">Editing or deleting generated invoice items does not unbill the original time entries.</p>
+                        @foreach (var project in projects)
+                        {
+                            <label class="check"><input type="checkbox" checked="@generationProjects.Contains(project.ProjectId)"
+                                @onchange="e => ToggleProject(project.ProjectId, e.Value is true)" /> @project.Name</label>
+                        }
+                        @if (projects.Count == 0)
+                        {
+                            <p>No projects available for this client.</p>
+                        }
+                    }
+                    <button type="submit">@(fromTime ? "Generate draft" : "Create empty draft")</button>
+                </form>
+            </section>
+            <div class="invoice-columns">
+                <section class="panel">
+                    <h2>Client invoices <span class="count">@invoices.Count</span></h2>
+                    @if (invoices.Count == 0)
+                    {
+                        <p>No invoices yet.</p>
+                    }
+                    @foreach (var invoice in invoices.OrderByDescending(i => i.IssueDate).ThenByDescending(i => i.InvoiceId))
+                    {
+                        <button type="button" class="invoice-choice @(selected?.InvoiceId == invoice.InvoiceId ? "selected" : "")"
+                                @onclick="() => SelectAsync(invoice.InvoiceId)">
+                            <strong>@invoice.InvoiceNumber</strong><span>@invoice.Status · Due @invoice.DueDate.ToString("d")</span>
+                            <span>Total @invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice).ToString("N2")</span>
+                        </button>
+                    }
+                </section>
+                <section class="panel details">
+                    @if (selected is null)
+                    {
+                        <h2>Invoice details</h2><p>Select an invoice to view its items.</p>
+                    }
+                    else
+                    {
+                        <h2>@selected.InvoiceNumber</h2>
+                        <p>Issued @selected.IssueDate.ToString("d") · Due @selected.DueDate.ToString("d")</p>
+                        <form class="status-form" @onsubmit="SaveStatusAsync" @onsubmit:preventDefault>
+                            <label for="invoice-status">Status</label>
+                            <select id="invoice-status" @bind="newStatus" disabled="@(selected.Status == InvoiceStatus.Paid)">
+                                @foreach (var status in Enum.GetValues<InvoiceStatus>())
+                                {
+                                    <option value="@status">@status</option>
+                                }
+                            </select>
+                            <button type="submit" disabled="@(selected.Status == InvoiceStatus.Paid)">Update status</button>
+                        </form>
+                        @if (selected.Status != InvoiceStatus.Draft)
+                        {
+                            <p class="notice">Items are locked unless the invoice is a draft. Paid invoices cannot change status.</p>
+                        }
+                        <div class="table-scroll">
+                            <table>
+                                <thead><tr><th>Product or work / project</th><th>Quantity</th><th>Unit price</th><th>Amount</th><th>Actions</th></tr></thead>
+                                <tbody>
+                                    @foreach (var item in selected.LineItems)
+                                    {
+                                        <tr>
+                                            <td>@item.Description<small>@ProjectName(item.ProjectId)</small></td>
+                                            <td>@item.Quantity.ToString("0.##")</td><td>@item.UnitPrice.ToString("N2")</td>
+                                            <td>@((item.Quantity * item.UnitPrice).ToString("N2"))</td>
+                                            <td class="actions">
+                                                <button type="button" disabled="@(selected.Status != InvoiceStatus.Draft)" @onclick="() => Edit(item)">Edit</button>
+                                                <button type="button" class="danger" disabled="@(selected.Status != InvoiceStatus.Draft)" @onclick="() => DeleteAsync(item.InvoiceLineItemId)">Delete</button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                        @if (selected.LineItems.Count == 0)
+                        {
+                            <p>This draft has no items.</p>
+                        }
+                        <p class="total">Total <strong>@selected.LineItems.Sum(i => i.Quantity * i.UnitPrice).ToString("N2")</strong></p>
+                        @if (selected.Status == InvoiceStatus.Draft)
+                        {
+                            <h3>@(editingId == 0 ? "Add product / material" : "Edit invoice item")</h3>
+                            <p>Enter the product or material used, the quantity, and the price per unit. Each product is saved as a separate invoice line item.</p>
+                            @if (projects.Count == 0)
+                            {
+                                <p class="notice">This client needs a project before you can add products. <a href="@($"/projects?client={clientId}")">Manage projects</a></p>
+                            }
+                            <form @onsubmit="SaveItemAsync" @onsubmit:preventDefault>
+                                <label for="item-project">Project</label>
+                                <select id="item-project" @bind="itemProjectId" required>
+                                    <option value="0">Select a project</option>
+                                    @foreach (var project in projects)
+                                    {
+                                        <option value="@project.ProjectId">@project.Name</option>
+                                    }
+                                </select>
+                                <label for="item-description">Product / material description</label>
+                                <input id="item-description" @bind="description" maxlength="200" placeholder="e.g. Cable, paint, or replacement parts" required />
+                                <div class="item-numbers">
+                                    <div><label for="item-quantity">Quantity</label><input id="item-quantity" type="number" @bind="quantity" @bind:event="oninput" step="any" min="0.01" required /></div>
+                                    <div><label for="item-rate">Unit price</label><input id="item-rate" type="number" @bind="unitPrice" @bind:event="oninput" step="0.01" min="0" required /></div>
+                                </div>
+                                <p class="total" aria-live="polite">Line total <strong>@((quantity * unitPrice).ToString("N2"))</strong></p>
+                                @if (itemTimeEntryId.HasValue)
+                                {
+                                    <p>Linked time entry #@itemTimeEntryId. Its project must remain unchanged.</p>
+                                }
+                                <div class="actions"><button type="submit" disabled="@(projects.Count == 0)">@(editingId == 0 ? "Add to invoice" : "Save changes")</button><button type="button" @onclick="ResetItem">Clear / cancel</button></div>
+                            </form>
+                        }
+                    }
+                </section>
+            </div>
+        }
+    </fieldset>
+</main>
+
+@code {
+    private string userId = string.Empty;
+    private bool busy;
+    private string? error;
+    private string? message;
+    private List<GetAllClientDto> clients = [];
+    private List<ProjectDto> projects = [];
+    private List<InvoiceDto> invoices = [];
+    private int clientId;
+    private Invoice? selected;
+    private DateTime dueDate = DateTime.UtcNow.Date.AddDays(30);
+    private bool fromTime;
+    private readonly HashSet<int> generationProjects = [];
+    private InvoiceStatus newStatus;
+    private int editingId;
+    private int itemProjectId;
+    private int? itemTimeEntryId;
+    private string description = string.Empty;
+    private decimal quantity = 1;
+    private decimal unitPrice;
+
+    protected override Task OnInitializedAsync() => RunAsync(async () =>
+    {
+        var state = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException();
+        clients = (await ClientService.GetAllForUserAsync(userId)).ToList();
+    });
+
+    private async Task RunAsync(Func<Task> operation)
+    {
+        if (busy) return;
+        busy = true;
+        error = null;
+        message = null;
+        try { await operation(); }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Invoice workspace operation failed");
+            error = ex is ArgumentException or FreeLanceTracker.Middleware.NotFoundException or FreeLanceTracker.Middleware.InvoiceLockedException
+                ? ex.Message : "Unable to complete the operation. Please refresh and try again.";
+        }
+        finally { busy = false; }
+    }
+
+    private Task ChangeClientAsync(ChangeEventArgs e) => RunAsync(async () =>
+    {
+        clientId = int.TryParse(e.Value?.ToString(), out var id) ? id : 0;
+        selected = null;
+        invoices = [];
+        projects = [];
+        generationProjects.Clear();
+        ResetItem();
+        if (clientId == 0) return;
+        projects = (await ProjectService.GetAllProjectsForClientAsync(clientId, userId)).ToList();
+        await ReloadListAsync();
+    });
+
+    private async Task ReloadListAsync() => invoices = (await InvoiceService.GetByClientIdAsync(clientId, userId)).ToList();
+
+    private void ToggleProject(int id, bool enabled)
+    {
+        if (enabled) generationProjects.Add(id);
+        else generationProjects.Remove(id);
+    }
+
+    private Task CreateAsync() => RunAsync(async () =>
+    {
+        if (clientId <= 0) throw new ArgumentException("Select a client.");
+        if (dueDate.Date < DateTime.UtcNow.Date) throw new ArgumentException("Due date cannot be before today.");
+        if (fromTime && generationProjects.Count == 0) throw new ArgumentException("Select at least one project.");
+        var created = fromTime
+            ? await InvoiceService.GenerateInvoiceFromUnbilledTimeAsync(clientId, generationProjects.ToArray(), dueDate, userId)
+            : await InvoiceService.CreateDraftAsync(clientId, dueDate, userId);
+        await LoadSelectedAsync(created.InvoiceId);
+        await ReloadListAsync();
+    });
+
+    private Task SelectAsync(int id) => RunAsync(() => LoadSelectedAsync(id));
+
+    private async Task LoadSelectedAsync(int id)
+    {
+        selected = await InvoiceService.GetByIdAsync(id, userId);
+        newStatus = selected.Status;
+        ResetItem();
+    }
+
+    private Task SaveStatusAsync() => RunAsync(async () =>
+    {
+        if (selected is null) return;
+        await InvoiceService.UpdateStatusAsync(selected.InvoiceId, newStatus, userId);
+        await LoadSelectedAsync(selected.InvoiceId);
+        await ReloadListAsync();
+    });
+
+    private void Edit(InvoiceLineItem item)
+    {
+        if (busy || selected?.Status != InvoiceStatus.Draft) return;
+        editingId = item.InvoiceLineItemId;
+        itemProjectId = item.ProjectId ?? 0;
+        itemTimeEntryId = item.TimeEntryId;
+        description = item.Description;
+        quantity = item.Quantity;
+        unitPrice = item.UnitPrice;
+    }
+
+    private Task SaveItemAsync() => RunAsync(async () =>
+    {
+        if (selected?.Status != InvoiceStatus.Draft) throw new ArgumentException("Select a draft invoice.");
+        if (!projects.Any(p => p.ProjectId == itemProjectId)) throw new ArgumentException("Select a project.");
+        if (string.IsNullOrWhiteSpace(description) || description.Trim().Length > 200)
+            throw new ArgumentException("Enter a description of at most 200 characters.");
+        if (quantity <= 0 || unitPrice < 0) throw new ArgumentException("Quantity must be positive and price cannot be negative.");
+        var item = new InvoiceLineItemDto
+        {
+            InvoiceId = selected.InvoiceId, ProjectId = itemProjectId, TimeEntryId = itemTimeEntryId,
+            Description = description.Trim(), Quantity = quantity, UnitPrice = unitPrice
+        };
+        if (editingId == 0) await InvoiceService.AddLineItemAsync(item, selected.InvoiceId, userId);
+        else await InvoiceService.UpdateLineItemAsync(item, editingId, userId);
+        await LoadSelectedAsync(selected.InvoiceId);
+        await ReloadListAsync();
+        message = "Invoice item saved. You can add another product or material below.";
+    });
+
+    private Task DeleteAsync(int id) => RunAsync(async () =>
+    {
+        if (selected?.Status != InvoiceStatus.Draft) throw new ArgumentException("Select a draft invoice.");
+        await InvoiceService.DeleteLineItemAsync(id, userId);
+        await LoadSelectedAsync(selected.InvoiceId);
+        await ReloadListAsync();
+    });
+
+    private string ProjectName(int? id) => projects.FirstOrDefault(p => p.ProjectId == id)?.Name ?? "Project unavailable";
+
+    private void ResetItem()
+    {
+        editingId = 0;
+        itemProjectId = projects.Count == 1 ? projects[0].ProjectId : 0;
+        itemTimeEntryId = null;
+        description = string.Empty;
+        quantity = 1;
+        unitPrice = 0;
+    }
+}
