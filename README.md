@@ -208,7 +208,3 @@ Further work focuses on improving authentication reliability, expanding automate
 FreeLanceTracker is designed to demonstrate practical C# and .NET skills through a realistic business application rather than a basic CRUD-only project.
 
 The primary focus is maintainable application architecture, relational data modeling, business rule enforcement, API development, and secure handling of user-specific data.
-
-## License
-
-No license has been specified yet. If you intend to make this project available for reuse, consider adding an appropriate open-source license.
