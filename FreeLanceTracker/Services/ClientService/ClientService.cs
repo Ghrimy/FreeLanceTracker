@@ -1,8 +1,12 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AutoMapper;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.ClientDtos;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
+using ValidationException = System.ComponentModel.DataAnnotations.ValidationException;
 
 namespace FreeLanceTracker.Services.ClientService;
 
@@ -82,9 +86,8 @@ public class ClientService(ApplicationDbContext context, IMapper clientMapper) :
 
         if (await context.Projects.AnyAsync(p => p.ClientId == clientId)
             || await context.Invoices.AnyAsync(i => i.ClientId == clientId))
-        {
-            throw new System.ComponentModel.DataAnnotations.ValidationException("Clients with projects or invoices cannot be deleted. Remove empty projects first, or archive the client to preserve their history.");
-        }
+            throw new ValidationException(
+                "Clients with projects or invoices cannot be deleted. Remove empty projects first, or archive the client to preserve their history.");
 
         context.Clients.Remove(client);
         await context.SaveChangesAsync();

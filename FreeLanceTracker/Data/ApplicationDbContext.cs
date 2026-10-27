@@ -21,7 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         //TODO: Configure table relationships here
         //TODO: Configure table properties here (e.g. decimal places etc.)
         base.OnModelCreating(modelBuilder);
-        
+
         //indexes the db making searching it faster.
         modelBuilder.Entity<Client>().HasIndex(c => c.UserId);
         modelBuilder.Entity<Project>().HasIndex(p => new { p.ClientId, p.Status });

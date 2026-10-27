@@ -1,3 +1,5 @@
+using System;
+using System.Net.Http;
 using System.Text;
 using FreeLanceTracker.Components;
 using FreeLanceTracker.Components.Account;
@@ -11,9 +13,14 @@ using FreeLanceTracker.Services.ProjectService;
 using FreeLanceTracker.Services.TimeEntryService;
 using FreeLanceTracker.TokenHandler;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
@@ -149,8 +156,6 @@ if (app.Environment.IsDevelopment())
     app.UseMigrationsEndPoint();
     app.UseSwagger();
     app.UseSwaggerUI();
-    
-    
 }
 else
 {

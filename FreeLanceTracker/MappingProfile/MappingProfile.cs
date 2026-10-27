@@ -24,23 +24,23 @@ public class MappingProfile : Profile
 
         CreateMap<UpdateClientDto, Client>();
         CreateMap<Client, UpdateClientDto>();
-        
+
         //Invoice
         CreateMap<Invoice, InvoiceDto>();
         CreateMap<InvoiceDto, Invoice>();
-        
+
         CreateMap<UpdateInvoiceStatusDto, Invoice>();
         CreateMap<Invoice, UpdateInvoiceStatusDto>();
-        
+
         //InvoiceLineItem
         CreateMap<InvoiceLineItem, InvoiceLineItemDto>();
         CreateMap<InvoiceLineItemDto, InvoiceLineItem>();
-        
+
         //TimeEntry
         CreateMap<TimeEntry, TimeEntryDto>();
         CreateMap<TimeEntry, InvoiceLineItemDto>();
         CreateMap<InvoiceLineItemDto, TimeEntry>();
-        
+
         //Project
         CreateMap<Project, ProjectDto>();
         CreateMap<ProjectDto, Project>();

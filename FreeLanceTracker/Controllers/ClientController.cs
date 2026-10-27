@@ -1,5 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
-using FreeLanceTracker.Data;
+using System.Threading.Tasks;
 using FreeLanceTracker.DTOs.ClientDtos;
 using FreeLanceTracker.Services.ClientService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;

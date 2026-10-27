@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using FreeLanceTracker.Data;
 
@@ -12,5 +14,4 @@ public class InvoiceDto
     [Required] public InvoiceStatus Status { get; set; }
     [Required] public int ClientId { get; set; }
     [Required] public IEnumerable<InvoiceLineItem> LineItems { get; set; } = new List<InvoiceLineItem>();
-
 }

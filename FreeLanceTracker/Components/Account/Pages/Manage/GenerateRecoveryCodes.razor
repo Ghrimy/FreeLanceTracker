@@ -1,6 +1,8 @@
 ﻿@page "/Account/Manage/GenerateRecoveryCodes"
 @using FreeLanceTracker.Data
+@using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.Extensions.Logging
 
 @inject UserManager<ApplicationUser> UserManager
 @inject IdentityRedirectManager RedirectManager

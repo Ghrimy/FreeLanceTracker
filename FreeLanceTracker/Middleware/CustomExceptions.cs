@@ -1,3 +1,5 @@
+using System;
+
 namespace FreeLanceTracker.Middleware;
 
 public abstract class AppException : Exception

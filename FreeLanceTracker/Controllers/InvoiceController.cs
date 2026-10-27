@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.InvoiceDtos;
 using FreeLanceTracker.DTOs.LineItemDto;

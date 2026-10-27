@@ -1,12 +1,14 @@
 using System.Security.Claims;
+using System.Threading.Tasks;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.Services.JwtTokenService;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace FreeLanceTracker.Services;
 
 /// <summary>
-/// Stores the JWT token for the current user.
+///     Stores the JWT token for the current user.
 /// </summary>
 /// <param name="userManager"></param>
 /// <param name="jwtTokenService"></param>
@@ -40,7 +42,7 @@ public class TokenStore(
         }
 
         var (token, expiresAt) = jwtTokenService.GenerateToken(applicationUser);
-        
+
         _token = token;
     }
 

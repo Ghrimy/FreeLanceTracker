@@ -1,4 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.TimeEntryDtos;
 using FreeLanceTracker.Services.TimeEntryService;
@@ -26,7 +29,8 @@ public class TimeEntryController(ITimeEntryService timeEntryService) : Controlle
     }
 
     [HttpGet("unbilled")]
-    public async Task<ActionResult<IEnumerable<TimeEntryDto>>> GetUnbilledByProjectIdsAsync([FromBody]IEnumerable<int> projectIds)
+    public async Task<ActionResult<IEnumerable<TimeEntryDto>>> GetUnbilledByProjectIdsAsync(
+        [FromBody] IEnumerable<int> projectIds)
     {
         var timeEntries = await timeEntryService.GetUnbilledByProjectIdsAsync(projectIds, GetUserId());
         return Ok(timeEntries);

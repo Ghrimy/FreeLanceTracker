@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.ClientDtos;
 

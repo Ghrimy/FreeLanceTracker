@@ -1,13 +1,16 @@
+using System;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using FreeLanceTracker.Data;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 
 namespace FreeLanceTracker.Services.JwtTokenService;
 
 /// <summary>
-/// Service for generating JWT tokens.
+///     Service for generating JWT tokens.
 /// </summary>
 /// <param name="configuration"></param>
 public class JwtTokenService(IConfiguration configuration) : IJwtTokenService
@@ -25,9 +28,9 @@ public class JwtTokenService(IConfiguration configuration) : IJwtTokenService
         var expires = DateTime.UtcNow.AddHours(2);
 
         var token = new JwtSecurityToken(
-            issuer: configuration["Jwt:Issuer"],
-            audience: configuration["Jwt:Audience"],
-            claims: claims,
+            configuration["Jwt:Issuer"],
+            configuration["Jwt:Audience"],
+            claims,
             expires: expires,
             signingCredentials: creds);
 

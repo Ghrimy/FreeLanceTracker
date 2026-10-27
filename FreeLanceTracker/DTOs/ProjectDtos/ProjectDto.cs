@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.ClientDtos;

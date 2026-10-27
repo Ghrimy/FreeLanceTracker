@@ -1,8 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AutoMapper;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.ProjectDtos;
 using FreeLanceTracker.Middleware;
 using Microsoft.EntityFrameworkCore;
+using ValidationException = System.ComponentModel.DataAnnotations.ValidationException;
 
 namespace FreeLanceTracker.Services.ProjectService;
 
@@ -12,7 +17,7 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
     {
         var project = await context.Projects
             .FirstOrDefaultAsync(p => p.ProjectId == projectId && p.Client != null && p.Client.UserId == userId);
-        
+
         var dto = mapper.Map<ProjectDto>(project);
         return dto;
     }
@@ -62,7 +67,7 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
 
         context.Projects.Add(newProject);
         await context.SaveChangesAsync();
-        
+
         var dto = mapper.Map<ProjectDto>(newProject);
         return dto;
     }
@@ -87,7 +92,8 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
     public async Task UpdateStatusAsync(UpdateProjectStatusDto projectdto, string userId)
     {
         var project = await context.Projects
-            .FirstOrDefaultAsync(p => p.ProjectId == projectdto.ProjectId && p.Client != null && p.Client.UserId == userId);
+            .FirstOrDefaultAsync(p =>
+                p.ProjectId == projectdto.ProjectId && p.Client != null && p.Client.UserId == userId);
         if (project is null) throw new NotFoundException("Project not found");
         project.Status = projectdto.Status;
         project.UpdatedAtUtc = DateTime.UtcNow;
@@ -101,9 +107,8 @@ public class ProjectService(ApplicationDbContext context, IMapper mapper) : IPro
         if (project is null) throw new NotFoundException("Project not found");
         if (await context.TimeEntries.AnyAsync(t => t.ProjectId == projectId)
             || await context.InvoiceLineItems.AnyAsync(i => i.ProjectId == projectId))
-        {
-            throw new System.ComponentModel.DataAnnotations.ValidationException("Remove unbilled time entries first. Keep projects with billing history and mark them completed instead.");
-        }
+            throw new ValidationException(
+                "Remove unbilled time entries first. Keep projects with billing history and mark them completed instead.");
         context.Projects.Remove(project);
         await context.SaveChangesAsync();
     }

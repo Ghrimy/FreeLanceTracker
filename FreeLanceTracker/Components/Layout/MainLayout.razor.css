@@ -54,9 +54,18 @@
 }
 
 @media (max-width: 640px) {
-    .app-header { align-items: flex-start; flex-direction: column; }
-    .app-navigation { width: 100%; }
-    .app-navigation ::deep a { flex: 1 1 auto; }
+    .app-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .app-navigation {
+        width: 100%;
+    }
+
+    .app-navigation ::deep a {
+        flex: 1 1 auto;
+    }
 }
 
 #blazor-error-ui {

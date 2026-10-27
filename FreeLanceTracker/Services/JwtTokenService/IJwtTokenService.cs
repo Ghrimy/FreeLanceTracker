@@ -1,3 +1,4 @@
+using System;
 using FreeLanceTracker.Data;
 
 namespace FreeLanceTracker.Services.JwtTokenService;

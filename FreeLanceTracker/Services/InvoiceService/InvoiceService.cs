@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using AutoMapper;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.InvoiceDtos;
@@ -25,23 +29,15 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
         return mapper.Map<InvoiceDto>(invoice);
     }
 
-    private async Task ValidateClientAndDueDateAsync(int clientId, DateTime dueDate, string userId)
-    {
-        if (dueDate.Date < DateTime.UtcNow.Date)
-            throw new ArgumentException("Due date cannot be before today.");
-        if (!await context.Clients.AnyAsync(c => c.ClientId == clientId && c.UserId == userId))
-            throw new NotFoundException("Client not found");
-    }
-
     public async Task<Invoice> GetByIdAsync(int invoiceId, string userId)
     {
         var invoice = await context.Invoices.Include(i => i.LineItems)
             .Where(i => i.InvoiceId == invoiceId && i.Client != null && i.Client.UserId == userId)
             .FirstOrDefaultAsync();
-        
+
         if (invoice is null) throw new NotFoundException("Invoice not found");
-   
-        
+
+
         return invoice;
     }
 
@@ -49,7 +45,7 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
     {
         var invoices = await context.Invoices.Include(i => i.LineItems)
             .Where(i => i.ClientId == clientId && i.Client != null && i.Client.UserId == userId).ToListAsync();
-        
+
         if (invoices is null) throw new NotFoundException("Invoices not found");
         var dtos = mapper.Map<IEnumerable<InvoiceDto>>(invoices);
         return dtos;
@@ -72,7 +68,7 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null) throw new NotFoundException("Invoice not found");
-        
+
         return invoice.LineItems.Sum(i => i.Quantity * i.UnitPrice);
     }
 
@@ -80,7 +76,7 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
     {
         var invoice = await GetByIdAsync(invoiceId, userId);
         if (invoice is null) throw new NotFoundException("Invoice not found");
-        
+
         if (invoice.Status != InvoiceStatus.Draft)
             throw new InvoiceLockedException("Only draft invoices can have their items changed.");
 
@@ -96,9 +92,9 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
         };
 
         invoice.LineItems.Add(addLineItem);
-        
+
         await context.SaveChangesAsync();
-        
+
         return new InvoiceLineItemDto
         {
             InvoiceLineItemId = addLineItem.InvoiceLineItemId,
@@ -154,21 +150,6 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
         await context.SaveChangesAsync();
     }
 
-
-    private async Task ValidateLineItemAsync(InvoiceLineItemDto lineItem, Invoice invoice, string userId)
-    {
-        if (string.IsNullOrWhiteSpace(lineItem.Description) || lineItem.Description.Trim().Length > 200)
-            throw new ArgumentException("Description is required and must be at most 200 characters.");
-        if (lineItem.Quantity <= 0 || lineItem.UnitPrice < 0)
-            throw new ArgumentException("Quantity must be positive and unit price cannot be negative.");
-        if (!await context.Projects.AnyAsync(p => p.ProjectId == lineItem.ProjectId
-                && p.ClientId == invoice.ClientId && p.Client != null && p.Client.UserId == userId))
-            throw new ArgumentException("Select a project belonging to this invoice's client.");
-        if (lineItem.TimeEntryId.HasValue && !await context.TimeEntries.AnyAsync(t =>
-                t.TimeEntryId == lineItem.TimeEntryId && t.ProjectId == lineItem.ProjectId))
-            throw new ArgumentException("Time entry must belong to the selected project.");
-    }
-
     // Generates an invoice for unbilled time entries associated with the specified client and projects.
     public async Task<InvoiceDto> GenerateInvoiceFromUnbilledTimeAsync(int clientId, IEnumerable<int> projectIds,
         DateTime dueDate, string userId)
@@ -177,81 +158,105 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
         var selectedProjectIds = projectIds?.Distinct().ToArray() ?? [];
         if (selectedProjectIds.Length == 0 || await context.Projects.CountAsync(p =>
                 selectedProjectIds.Contains(p.ProjectId) && p.ClientId == clientId
-                && p.Client != null && p.Client.UserId == userId) != selectedProjectIds.Length)
+                                                         && p.Client != null && p.Client.UserId == userId) !=
+            selectedProjectIds.Length)
             throw new ArgumentException("Select projects belonging to this client.");
 
         await using var transaction = await context.Database.BeginTransactionAsync();
-        
+
         try
         {
-                // Get all unbilled time entries for the specified client and projects
-                var unbilledInvoices = await context.TimeEntries
-                    .Include(p => p.Project)
-                    .Where(t => selectedProjectIds.Contains(t.ProjectId)
-                                && t.IsBillable
-                                && !t.IsBilled
-                                && t.Project != null
-                                && t.Project.Client != null
-                                && t.Project.ClientId == clientId
-                                && t.Project.Client.UserId == userId)
-                    .ToListAsync();
+            // Get all unbilled time entries for the specified client and projects
+            var unbilledInvoices = await context.TimeEntries
+                .Include(p => p.Project)
+                .Where(t => selectedProjectIds.Contains(t.ProjectId)
+                            && t.IsBillable
+                            && !t.IsBilled
+                            && t.Project != null
+                            && t.Project.Client != null
+                            && t.Project.ClientId == clientId
+                            && t.Project.Client.UserId == userId)
+                .ToListAsync();
 
-                if (!unbilledInvoices.Any())
-                    throw new NotFoundException("No unbilled time entries found for the selected projects.");
-                if (unbilledInvoices.Any(t => t.Hours <= 0 || t.Project!.HourlyRate < 0))
-                    throw new ArgumentException("Billable time must have positive hours and a non-negative project rate.");
+            if (!unbilledInvoices.Any())
+                throw new NotFoundException("No unbilled time entries found for the selected projects.");
+            if (unbilledInvoices.Any(t => t.Hours <= 0 || t.Project!.HourlyRate < 0))
+                throw new ArgumentException("Billable time must have positive hours and a non-negative project rate.");
 
-                // Create a new invoice
-                var invoice = new Invoice
+            // Create a new invoice
+            var invoice = new Invoice
+            {
+                ClientId = clientId,
+                IssueDate = DateTime.UtcNow,
+                DueDate = dueDate,
+                Status = InvoiceStatus.Draft,
+                InvoiceNumber = await GenerateInvoiceNumberAsync(),
+                LineItems = new List<InvoiceLineItem>()
+            };
+
+            var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
+
+            // Calculate total hours for each project and adds it as one item instead of individual items
+            foreach (var group in groupedByProject)
+            {
+                var project = group.Key;
+                var totalHours = group.Sum(t => t.Hours);
+
+                invoice.LineItems.Add(new InvoiceLineItem
                 {
-                    ClientId = clientId,
-                    IssueDate = DateTime.UtcNow,
-                    DueDate = dueDate,
-                    Status = InvoiceStatus.Draft,
-                    InvoiceNumber = await GenerateInvoiceNumberAsync(),
-                    LineItems = new List<InvoiceLineItem>(),
+                    Description = $"{project.Name} — {totalHours}h",
+                    Quantity = totalHours,
+                    UnitPrice = project.HourlyRate,
+                    ProjectId = project.ProjectId
+                });
+            }
 
-                };
+            // Mark all time entries as billed
+            foreach (var entry in unbilledInvoices)
+                entry.IsBilled = true;
 
-                var groupedByProject = unbilledInvoices.GroupBy(t => t.Project);
 
-                // Calculate total hours for each project and adds it as one item instead of individual items
-                foreach (var group in groupedByProject)
-                {
-                    var project = group.Key;
-                    var totalHours = group.Sum(t => t.Hours);
+            context.Invoices.Add(invoice);
+            await context.SaveChangesAsync();
+            await transaction.CommitAsync();
 
-                    invoice.LineItems.Add(new InvoiceLineItem
-                    {
-                        Description = $"{project.Name} — {totalHours}h",
-                        Quantity = totalHours,
-                        UnitPrice = project.HourlyRate,
-                        ProjectId = project.ProjectId
-                    });
-                }
-
-                // Mark all time entries as billed
-                foreach (var entry in unbilledInvoices)
-                    entry.IsBilled = true;
-
-        
-                context.Invoices.Add(invoice);
-                await context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                var dto = mapper.Map<InvoiceDto>(invoice);
-                return dto;
+            var dto = mapper.Map<InvoiceDto>(invoice);
+            return dto;
         }
         catch (Exception)
         {
-                await transaction.RollbackAsync();
-                throw;
+            await transaction.RollbackAsync();
+            throw;
         }
     }
 
+    private async Task ValidateClientAndDueDateAsync(int clientId, DateTime dueDate, string userId)
+    {
+        if (dueDate.Date < DateTime.UtcNow.Date)
+            throw new ArgumentException("Due date cannot be before today.");
+        if (!await context.Clients.AnyAsync(c => c.ClientId == clientId && c.UserId == userId))
+            throw new NotFoundException("Client not found");
+    }
+
+
+    private async Task ValidateLineItemAsync(InvoiceLineItemDto lineItem, Invoice invoice, string userId)
+    {
+        if (string.IsNullOrWhiteSpace(lineItem.Description) || lineItem.Description.Trim().Length > 200)
+            throw new ArgumentException("Description is required and must be at most 200 characters.");
+        if (lineItem.Quantity <= 0 || lineItem.UnitPrice < 0)
+            throw new ArgumentException("Quantity must be positive and unit price cannot be negative.");
+        if (!await context.Projects.AnyAsync(p => p.ProjectId == lineItem.ProjectId
+                                                  && p.ClientId == invoice.ClientId && p.Client != null &&
+                                                  p.Client.UserId == userId))
+            throw new ArgumentException("Select a project belonging to this invoice's client.");
+        if (lineItem.TimeEntryId.HasValue && !await context.TimeEntries.AnyAsync(t =>
+                t.TimeEntryId == lineItem.TimeEntryId && t.ProjectId == lineItem.ProjectId))
+            throw new ArgumentException("Time entry must belong to the selected project.");
+    }
+
     /// <summary>
-    /// TODO: Will need updating.
-    /// Generates a unique invoice number based on the current year and the count of invoices issued in that year.
+    ///     TODO: Will need updating.
+    ///     Generates a unique invoice number based on the current year and the count of invoices issued in that year.
     /// </summary>
     private async Task<string> GenerateInvoiceNumberAsync()
     {

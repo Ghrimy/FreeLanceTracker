@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
+using FreeLanceTracker.DTOs.InvoiceDtos;
 using FreeLanceTracker.DTOs.ProjectDtos;
 using FreeLanceTracker.DTOs.TimeEntryDtos;
-using FreeLanceTracker.DTOs.InvoiceDtos;
 
 namespace FreeLanceTracker.DTOs.LineItemDto;
 
@@ -20,6 +20,6 @@ public class InvoiceLineItemDto
     [Required] public int? ProjectId { get; set; }
     [Required] public ProjectDto? Project { get; set; }
 
-    [Required]public int? TimeEntryId { get; set; }
+    [Required] public int? TimeEntryId { get; set; }
     [Required] public TimeEntryDto TimeEntry { get; set; }
 }

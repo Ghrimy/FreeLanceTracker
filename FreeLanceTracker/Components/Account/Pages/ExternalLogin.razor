@@ -3,9 +3,12 @@
 @using System.Security.Claims
 @using System.Text
 @using System.Text.Encodings.Web
+@using System.Threading
 @using FreeLanceTracker.Data
+@using Microsoft.AspNetCore.Http
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.WebUtilities
+@using Microsoft.Extensions.Logging
 
 @inject SignInManager<ApplicationUser> SignInManager
 @inject UserManager<ApplicationUser> UserManager

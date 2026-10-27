@@ -1,81 +1,163 @@
 @page "/workspace"
 @page "/projects"
-@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @using System.ComponentModel.DataAnnotations
 @using System.Security.Claims
 @using FreeLanceTracker.Data
 @using FreeLanceTracker.DTOs.ClientDtos
 @using FreeLanceTracker.DTOs.ProjectDtos
+@using FreeLanceTracker.Middleware
 @using FreeLanceTracker.Services.ClientService
 @using FreeLanceTracker.Services.ProjectService
 @using FreeLanceTracker.Services.TimeEntryService
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Logging
+@using ValidationException = System.ComponentModel.DataAnnotations.ValidationException
+@attribute [Authorize]
 @inject AuthenticationStateProvider Auth
 @inject IServiceScopeFactory ScopeFactory
 @inject ILogger<Workspace> Logger
 
 <PageTitle>Manage projects</PageTitle>
 <main class="workspace">
-<h1>Projects</h1>
-<p>Choose a client to add, edit or remove projects and manage their time entries.</p>
-@if (error is not null) { <p class="error" role="alert">@error</p> }
-@if (message is not null) { <p role="status">@message</p> }
-@if (pending is not null) { <section role="alert"><p>@confirmation</p><button disabled="@busy" @onclick="Confirm">Confirm</button><button disabled="@busy" @onclick="() => pending = null">Cancel</button></section> }
-@if (!interactive) { <p role="status">Connecting… Project and time-entry controls will be available shortly.</p> }
-<fieldset disabled="@(!interactive || busy || userId is null || pending is not null)">
-<section>
-<label for="project-client">Client</label>
-<select id="project-client" value="@clientId" @onchange="ChangeClient">
-<option value="0">Select a client</option>
-@foreach (var c in clients)
-{
-    <option value="@c.ClientId">@c.Name @(c.IsArchived ? "(archived)" : "")</option>
-}
-</select>
-@if (clients.Count == 0 && !busy) { <p>No clients yet. <a class="button-secondary" href="clients">Add your first client</a></p> }
-</section>
-@if (clientId != 0)
-{
-<section><h2>Projects for @clients.FirstOrDefault(c => c.ClientId == clientId)?.Name</h2>
-<p>Use the form below to add a project, or select Edit project to change an existing one.</p><div class="cards">
-@foreach (var p in projects)
-{
-<article><h3>@p.Name</h3><p>@p.Description</p><p>@p.Status · @p.HourlyRate.ToString("N2") / hour</p><button @onclick="() => SelectProject(p.ProjectId)">Time entries</button><button @onclick="() => EditProject(p)">Edit project</button><button class="danger" @onclick="() => DeleteProject(p)">Delete project</button></article>
-}
-</div>
-@if (projects.Count == 0) { <p>No projects yet.</p> }
-<EditForm Model="projectForm" OnValidSubmit="SaveProject" FormName="project-editor" id="project-editor">
-<DataAnnotationsValidator /><ValidationSummary /><h3>@(projectForm.Id == 0 ? "Add project" : "Edit project")</h3>
-<label>Name<InputText @bind-Value="projectForm.Name" maxlength="50" /></label>
-<label>Description<InputTextArea @bind-Value="projectForm.Description" maxlength="200" /></label>
-<label>Hourly rate<InputNumber @bind-Value="projectForm.HourlyRate" step="0.01" /></label>
-<label>Start date<InputDate @bind-Value="projectForm.StartDate" /></label>
-<label>Status<InputSelect @bind-Value="projectForm.Status">@foreach (var s in Enum.GetValues<ProjectStatus>()) { <option value="@s">@s</option> }</InputSelect></label>
-<button type="submit">Save project</button><button type="button" @onclick="() => projectForm = new()">Clear</button>
-</EditForm></section>
-}
-@if (projectId != 0)
-{
-<section><h2>Time for @projects.FirstOrDefault(p => p.ProjectId == projectId)?.Name</h2><p>Total: @entries.Sum(t => t.Hours).ToString("N2") hours. Billed entries are locked.</p><div class="cards">
-@foreach (var t in entries.OrderByDescending(t => t.Date))
-{
-<article><h3>@t.Date.ToShortDateString() · @t.Hours.ToString("N2") hours</h3><p>@t.Description</p><p>@(t.IsBillable ? "Billable" : "Non-billable") @(t.IsBilled ? "· Billed" : "")</p><button disabled="@t.IsBilled" @onclick="() => EditTime(t)">Edit</button><button disabled="@t.IsBilled" @onclick="() => DeleteTime(t)">Delete</button></article>
-}
-</div>
-@if (entries.Count == 0) { <p>No time entries yet.</p> }
-<EditForm Model="timeForm" OnValidSubmit="SaveTime" FormName="time-editor">
-<DataAnnotationsValidator /><ValidationSummary /><h3>@(timeForm.Id == 0 ? "Log time" : "Edit time entry")</h3>
-<label>Date<InputDate @bind-Value="timeForm.Date" /></label><label>Hours<InputNumber @bind-Value="timeForm.Hours" step="0.01" /></label>
-<label>Description<InputTextArea @bind-Value="timeForm.Description" maxlength="200" /></label><label><InputCheckbox @bind-Value="timeForm.IsBillable" /> Billable</label>
-<button type="submit">Save time</button><button type="button" @onclick="() => timeForm = new()">Clear</button>
-</EditForm></section>
-}
-</fieldset>
-@if (busy) { <p role="status">Working…</p> }
+    <h1>Projects</h1>
+    <p>Choose a client to add, edit or remove projects and manage their time entries.</p>
+    @if (error is not null)
+    {
+        <p class="error" role="alert">@error</p>
+    }
+    @if (message is not null)
+    {
+        <p role="status">@message</p>
+    }
+    @if (pending is not null)
+    {
+        <section role="alert"><p>@confirmation</p>
+            <button disabled="@busy" @onclick="Confirm">Confirm</button>
+            <button disabled="@busy" @onclick="() => pending = null">Cancel</button>
+        </section>
+    }
+    @if (!interactive)
+    {
+        <p role="status">Connecting… Project and time-entry controls will be available shortly.</p>
+    }
+    <fieldset disabled="@(!interactive || busy || userId is null || pending is not null)">
+        <section>
+            <label for="project-client">Client</label>
+            <select id="project-client" value="@clientId" @onchange="ChangeClient">
+                <option value="0">Select a client</option>
+                @foreach (var c in clients)
+                {
+                    <option value="@c.ClientId">@c.Name @(c.IsArchived ? "(archived)" : "")</option>
+                }
+            </select>
+            @if (clients.Count == 0 && !busy)
+            {
+                <p>No clients yet. <a class="button-secondary" href="clients">Add your first client</a></p>
+            }
+        </section>
+        @if (clientId != 0)
+        {
+            <section><h2>Projects for @clients.FirstOrDefault(c => c.ClientId == clientId)?.Name</h2>
+                <p>Use the form below to add a project, or select Edit project to change an existing one.</p>
+                <div class="cards">
+                    @foreach (var p in projects)
+                    {
+                        <article><h3>@p.Name</h3>
+                            <p>@p.Description</p>
+                            <p>@p.Status · @p.HourlyRate.ToString("N2") / hour</p>
+                            <button @onclick="() => SelectProject(p.ProjectId)">Time entries</button>
+                            <button @onclick="() => EditProject(p)">Edit project</button>
+                            <button class="danger" @onclick="() => DeleteProject(p)">Delete project</button>
+                        </article>
+                    }
+                </div>
+                @if (projects.Count == 0)
+                {
+                    <p>No projects yet.</p>
+                }
+                <EditForm Model="projectForm" OnValidSubmit="SaveProject" FormName="project-editor" id="project-editor">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <h3>@(projectForm.Id == 0 ? "Add project" : "Edit project")</h3>
+                    <label>Name
+                        <InputText @bind-Value="projectForm.Name" maxlength="50"/>
+                    </label>
+                    <label>Description
+                        <InputTextArea @bind-Value="projectForm.Description" maxlength="200"/>
+                    </label>
+                    <label>Hourly rate
+                        <InputNumber @bind-Value="projectForm.HourlyRate" step="0.01"/>
+                    </label>
+                    <label>Start date
+                        <InputDate @bind-Value="projectForm.StartDate"/>
+                    </label>
+                    <label>Status
+                        <InputSelect
+                            @bind-Value="projectForm.Status">@foreach (var s in Enum.GetValues<ProjectStatus>())
+                            {
+                                <option value="@s">@s</option>
+                            }
+                        </InputSelect>
+                    </label>
+                    <button type="submit">Save project</button>
+                    <button type="button" @onclick="() => projectForm = new ProjectForm()">Clear</button>
+                </EditForm>
+            </section>
+        }
+        @if (projectId != 0)
+        {
+            <section><h2>Time for @projects.FirstOrDefault(p => p.ProjectId == projectId)?.Name</h2>
+                <p>Total: @entries.Sum(t => t.Hours).ToString("N2") hours. Billed entries are locked.</p>
+                <div class="cards">
+                    @foreach (var t in entries.OrderByDescending(t => t.Date))
+                    {
+                        <article><h3>@t.Date.ToShortDateString() · @t.Hours.ToString("N2") hours</h3>
+                            <p>@t.Description</p>
+                            <p>@(t.IsBillable ? "Billable" : "Non-billable") @(t.IsBilled ? "· Billed" : "")</p>
+                            <button disabled="@t.IsBilled" @onclick="() => EditTime(t)">Edit</button>
+                            <button disabled="@t.IsBilled" @onclick="() => DeleteTime(t)">Delete</button>
+                        </article>
+                    }
+                </div>
+                @if (entries.Count == 0)
+                {
+                    <p>No time entries yet.</p>
+                }
+                <EditForm Model="timeForm" OnValidSubmit="SaveTime" FormName="time-editor">
+                    <DataAnnotationsValidator/>
+                    <ValidationSummary/>
+                    <h3>@(timeForm.Id == 0 ? "Log time" : "Edit time entry")</h3>
+                    <label>Date
+                        <InputDate @bind-Value="timeForm.Date"/>
+                    </label><label>Hours
+                        <InputNumber @bind-Value="timeForm.Hours"/>
+                    </label>
+                    <label>Description
+                        <InputTextArea @bind-Value="timeForm.Description" maxlength="200"/>
+                    </label><label>
+                        <InputCheckbox @bind-Value="timeForm.IsBillable"/>
+                        Billable</label>
+                    <button type="submit">Save time</button>
+                    <button type="button" @onclick="() => timeForm = new TimeForm()">Clear</button>
+                </EditForm>
+            </section>
+        }
+    </fieldset>
+    @if (busy)
+    {
+        <p role="status">Working…</p>
+    }
 </main>
 
 @code {
-    [SupplyParameterFromQuery(Name = "client")] public int? RequestedClientId { get; set; }
-    [SupplyParameterFromQuery(Name = "project")] public int? RequestedProjectId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "client")]
+    public int? RequestedClientId { get; set; }
+
+    [SupplyParameterFromQuery(Name = "project")]
+    public int? RequestedProjectId { get; set; }
+
     private string? userId, error, message, confirmation;
     private bool busy;
     private bool interactive;
@@ -99,79 +181,196 @@
     protected override async Task OnParametersSetAsync()
     {
         userId = (await Auth.GetAuthenticationStateAsync()).User.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (userId is not null) await Run(async sp =>
-        {
-            clientId = 0; projectId = 0; projects = []; entries = []; projectForm = new(); timeForm = new(); pending = null;
-            await LoadClients(sp);
-            if (RequestedClientId is int id && clients.Any(c => c.ClientId == id))
+        if (userId is not null)
+            await Run(async sp =>
             {
-                clientId = id;
-                await LoadProjects(sp);
-                if (RequestedProjectId is int requested && projects.Any(p => p.ProjectId == requested))
+                clientId = 0;
+                projectId = 0;
+                projects = [];
+                entries = [];
+                projectForm = new ProjectForm();
+                timeForm = new TimeForm();
+                pending = null;
+                await LoadClients(sp);
+                if (RequestedClientId is int id && clients.Any(c => c.ClientId == id))
                 {
-                    projectId = requested;
-                    await LoadTime(sp);
+                    clientId = id;
+                    await LoadProjects(sp);
+                    if (RequestedProjectId is int requested && projects.Any(p => p.ProjectId == requested))
+                    {
+                        projectId = requested;
+                        await LoadTime(sp);
+                    }
                 }
-            }
-        });
+            });
     }
+
     private async Task Run(Func<IServiceProvider, Task> action, string? success = null)
     {
         if (busy || userId is null) return;
-        busy = true; error = null; message = null;
-        try { await using var scope = ScopeFactory.CreateAsyncScope(); await action(scope.ServiceProvider); message = success; }
-        catch (Exception ex) when (ex is ValidationException or FreeLanceTracker.Middleware.NotFoundException or FreeLanceTracker.Middleware.TimeEntryLockedException) { error = ex.Message; }
-        catch (Exception ex) { Logger.LogError(ex, "Workspace operation failed"); error = "Unable to complete the operation. Please try again."; }
-        finally { busy = false; }
+        busy = true;
+        error = null;
+        message = null;
+        try
+        {
+            await using var scope = ScopeFactory.CreateAsyncScope();
+            await action(scope.ServiceProvider);
+            message = success;
+        }
+        catch (Exception ex) when (ex is ValidationException or NotFoundException or TimeEntryLockedException)
+        {
+            error = ex.Message;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Workspace operation failed");
+            error = "Unable to complete the operation. Please try again.";
+        }
+        finally
+        {
+            busy = false;
+        }
     }
-    private async Task LoadClients(IServiceProvider sp) => clients = (await sp.GetRequiredService<IClientService>().GetAllForUserAsync(userId!)).ToList();
-    private async Task LoadProjects(IServiceProvider sp) => projects = (await sp.GetRequiredService<IProjectService>().GetAllProjectsForClientAsync(clientId, userId!)).ToList();
-    private async Task LoadTime(IServiceProvider sp) => entries = (await sp.GetRequiredService<ITimeEntryService>().GetAllForProjectAsync(projectId, userId!)).ToList();
-    private Task ChangeClient(ChangeEventArgs e) => int.TryParse(e.Value?.ToString(), out var id) && (id == 0 || clients.Any(c => c.ClientId == id)) ? SelectClient(id) : Task.CompletedTask;
-    private Task SelectClient(int id) => Run(async sp => { clientId = id; projectId = 0; projects = []; entries = []; projectForm = new(); timeForm = new(); await LoadProjects(sp); });
-    private Task SelectProject(int id) => Run(async sp => { projectId = id; entries = []; timeForm = new(); await LoadTime(sp); });
-    private void EditProject(ProjectDto p) => projectForm = new() { Id = p.ProjectId, Name = p.Name, Description = p.Description, HourlyRate = p.HourlyRate, StartDate = p.StartDate, Status = p.Status };
-    private void EditTime(TimeEntry t) => timeForm = new() { Id = t.TimeEntryId, Date = t.Date, Description = t.Description, Hours = t.Hours, IsBillable = t.IsBillable };
-    private Task SaveProject() => Run(async sp =>
+
+    private async Task LoadClients(IServiceProvider sp)
     {
-        var service = sp.GetRequiredService<IProjectService>();
-        if (projectForm.Id == 0) await service.CreateAsync(new() { ClientId = clientId, Name = projectForm.Name.Trim(), Description = projectForm.Description, HourlyRate = projectForm.HourlyRate, StartDate = projectForm.StartDate, Status = projectForm.Status }, userId!);
-        else await service.UpdateAsync(new() { ProjectId = projectForm.Id, Name = projectForm.Name.Trim(), Description = projectForm.Description, HourlyRate = projectForm.HourlyRate, StartDate = projectForm.StartDate, Status = projectForm.Status }, userId!);
-        projectForm = new(); await LoadProjects(sp);
-    }, "Project saved.");
-    private Task SaveTime() => Run(async sp =>
+        clients = (await sp.GetRequiredService<IClientService>().GetAllForUserAsync(userId!)).ToList();
+    }
+
+    private async Task LoadProjects(IServiceProvider sp)
     {
-        var service = sp.GetRequiredService<ITimeEntryService>();
-        var entry = new TimeEntry { TimeEntryId = timeForm.Id, ProjectId = projectId, Date = timeForm.Date, Hours = timeForm.Hours, Description = timeForm.Description, IsBillable = timeForm.IsBillable };
-        if (entry.TimeEntryId == 0) await service.LogTimeAsync(entry, userId!); else await service.UpdateAsync(entry, userId!);
-        timeForm = new(); await LoadTime(sp);
-    }, "Time entry saved.");
+        projects = (await sp.GetRequiredService<IProjectService>().GetAllProjectsForClientAsync(clientId, userId!)).ToList();
+    }
+
+    private async Task LoadTime(IServiceProvider sp)
+    {
+        entries = (await sp.GetRequiredService<ITimeEntryService>().GetAllForProjectAsync(projectId, userId!)).ToList();
+    }
+
+    private Task ChangeClient(ChangeEventArgs e)
+    {
+        return int.TryParse(e.Value?.ToString(), out var id) && (id == 0 || clients.Any(c => c.ClientId == id)) ? SelectClient(id) : Task.CompletedTask;
+    }
+
+    private Task SelectClient(int id)
+    {
+        return Run(async sp =>
+        {
+            clientId = id;
+            projectId = 0;
+            projects = [];
+            entries = [];
+            projectForm = new ProjectForm();
+            timeForm = new TimeForm();
+            await LoadProjects(sp);
+        });
+    }
+
+    private Task SelectProject(int id)
+    {
+        return Run(async sp =>
+        {
+            projectId = id;
+            entries = [];
+            timeForm = new TimeForm();
+            await LoadTime(sp);
+        });
+    }
+
+    private void EditProject(ProjectDto p)
+    {
+        projectForm = new ProjectForm { Id = p.ProjectId, Name = p.Name, Description = p.Description, HourlyRate = p.HourlyRate, StartDate = p.StartDate, Status = p.Status };
+    }
+
+    private void EditTime(TimeEntry t)
+    {
+        timeForm = new TimeForm { Id = t.TimeEntryId, Date = t.Date, Description = t.Description, Hours = t.Hours, IsBillable = t.IsBillable };
+    }
+
+    private Task SaveProject()
+    {
+        return Run(async sp =>
+        {
+            var service = sp.GetRequiredService<IProjectService>();
+            if (projectForm.Id == 0) await service.CreateAsync(new CreateProjectDto { ClientId = clientId, Name = projectForm.Name.Trim(), Description = projectForm.Description, HourlyRate = projectForm.HourlyRate, StartDate = projectForm.StartDate, Status = projectForm.Status }, userId!);
+            else await service.UpdateAsync(new UpdateProjectDto { ProjectId = projectForm.Id, Name = projectForm.Name.Trim(), Description = projectForm.Description, HourlyRate = projectForm.HourlyRate, StartDate = projectForm.StartDate, Status = projectForm.Status }, userId!);
+            projectForm = new ProjectForm();
+            await LoadProjects(sp);
+        }, "Project saved.");
+    }
+
+    private Task SaveTime()
+    {
+        return Run(async sp =>
+        {
+            var service = sp.GetRequiredService<ITimeEntryService>();
+            var entry = new TimeEntry { TimeEntryId = timeForm.Id, ProjectId = projectId, Date = timeForm.Date, Hours = timeForm.Hours, Description = timeForm.Description, IsBillable = timeForm.IsBillable };
+            if (entry.TimeEntryId == 0) await service.LogTimeAsync(entry, userId!);
+            else await service.UpdateAsync(entry, userId!);
+            timeForm = new TimeForm();
+            await LoadTime(sp);
+        }, "Time entry saved.");
+    }
+
     private void DeleteProject(ProjectDto p)
     {
         confirmation = $"Delete {p.Name}? Projects with time or invoice history cannot be deleted.";
-        pending = () => Run(async sp => { await sp.GetRequiredService<IProjectService>().DeleteAsync(p.ProjectId, userId!); if (projectId == p.ProjectId) { projectId = 0; entries = []; timeForm = new(); } projectForm = new(); await LoadProjects(sp); }, "Project deleted.");
+        pending = () => Run(async sp =>
+        {
+            await sp.GetRequiredService<IProjectService>().DeleteAsync(p.ProjectId, userId!);
+            if (projectId == p.ProjectId)
+            {
+                projectId = 0;
+                entries = [];
+                timeForm = new TimeForm();
+            }
+
+            projectForm = new ProjectForm();
+            await LoadProjects(sp);
+        }, "Project deleted.");
     }
+
     private void DeleteTime(TimeEntry t)
     {
         confirmation = "Permanently delete this time entry?";
-        pending = () => Run(async sp => { await sp.GetRequiredService<ITimeEntryService>().DeleteAsync(t.TimeEntryId, userId!); timeForm = new(); await LoadTime(sp); }, "Time entry deleted.");
+        pending = () => Run(async sp =>
+        {
+            await sp.GetRequiredService<ITimeEntryService>().DeleteAsync(t.TimeEntryId, userId!);
+            timeForm = new TimeForm();
+            await LoadTime(sp);
+        }, "Time entry deleted.");
     }
-    private async Task Confirm() { var action = pending; pending = null; if (action is not null) await action(); }
+
+    private async Task Confirm()
+    {
+        var action = pending;
+        pending = null;
+        if (action is not null) await action();
+    }
+
     private sealed class ProjectForm
     {
         public int Id { get; set; }
-        [Required, StringLength(50)] public string Name { get; set; } = "";
+        [Required][StringLength(50)] public string Name { get; set; } = "";
         [StringLength(200)] public string? Description { get; set; }
-        [Range(typeof(decimal), "0", "9999999999")] public decimal HourlyRate { get; set; }
+
+        [Range(typeof(decimal), "0", "9999999999")]
+        public decimal HourlyRate { get; set; }
+
         public DateTime StartDate { get; set; } = DateTime.Today;
         public ProjectStatus Status { get; set; }
     }
+
     private sealed class TimeForm
     {
         public int Id { get; set; }
         public DateTime Date { get; set; } = DateTime.Today;
-        [Range(typeof(decimal), "0.01", "9999.99")] public decimal Hours { get; set; } = 1;
+
+        [Range(typeof(decimal), "0", "9999999999")]
+        public decimal Hours { get; set; } = 1;
+
         [StringLength(200)] public string? Description { get; set; }
         public bool IsBillable { get; set; } = true;
     }
+
 }

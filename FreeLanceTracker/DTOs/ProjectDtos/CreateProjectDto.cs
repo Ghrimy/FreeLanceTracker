@@ -1,7 +1,6 @@
+using System;
 using System.ComponentModel.DataAnnotations;
 using FreeLanceTracker.Data;
-using FreeLanceTracker.DTOs.ClientDtos;
-using FreeLanceTracker.DTOs.TimeEntryDtos;
 
 namespace FreeLanceTracker.DTOs.ProjectDtos;
 
@@ -14,5 +13,4 @@ public class CreateProjectDto
     [Required] public decimal HourlyRate { get; set; }
     [Required] public DateTime StartDate { get; set; }
     [Required] public int ClientId { get; set; }
-    
 }

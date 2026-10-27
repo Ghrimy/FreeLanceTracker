@@ -1,5 +1,7 @@
+using System;
+using System.Collections.Generic;
 using System.Security.Claims;
-using FreeLanceTracker.Data;
+using System.Threading.Tasks;
 using FreeLanceTracker.DTOs.ProjectDtos;
 using FreeLanceTracker.Services.ProjectService;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -51,7 +53,7 @@ public class ProjectController(IProjectService projectService) : ControllerBase
     public async Task<ActionResult> UpdateStatusAsync(int projectId, UpdateProjectStatusDto status)
     {
         if (status.ProjectId != projectId) return BadRequest("Route/body ID mismatch.");
-        
+
         await projectService.UpdateStatusAsync(status, GetUserId());
         return Ok();
     }
