@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeLanceTracker", "FreeLanceTracker\FreeLanceTracker.csproj", "{ACA860CB-0952-4514-89FF-C7098DF40D58}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FreeLanceTracker.Tests", "FreeLanceTracker.Tests\FreeLanceTracker.Tests.csproj", "{28A22796-D1BB-452D-968D-BCF46F7432BC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{ACA860CB-0952-4514-89FF-C7098DF40D58}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ACA860CB-0952-4514-89FF-C7098DF40D58}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ACA860CB-0952-4514-89FF-C7098DF40D58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{28A22796-D1BB-452D-968D-BCF46F7432BC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{28A22796-D1BB-452D-968D-BCF46F7432BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{28A22796-D1BB-452D-968D-BCF46F7432BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{28A22796-D1BB-452D-968D-BCF46F7432BC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

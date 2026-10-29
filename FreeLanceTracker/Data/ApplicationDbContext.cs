@@ -18,8 +18,6 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        //TODO: Configure table relationships here
-        //TODO: Configure table properties here (e.g. decimal places etc.)
         base.OnModelCreating(modelBuilder);
 
         //indexes the db making searching it faster.

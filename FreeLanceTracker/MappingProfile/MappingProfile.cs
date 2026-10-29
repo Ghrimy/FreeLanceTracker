@@ -12,24 +12,58 @@ public class MappingProfile : Profile
 {
     public MappingProfile()
     {
-        //Clients
-        CreateMap<CreateClientDto, Client>();
+        //Clients.
+        // Added exceptions to ignore when making the mapping
+        CreateMap<CreateClientDto, Client>()
+            .ForMember(dest => dest.ClientId, opt => opt.Ignore())
+            .ForMember(dest => dest.IsArchived, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.Projects, opt => opt.Ignore())
+            .ForMember(dest => dest.Invoices, opt => opt.Ignore());
+
         CreateMap<Client, CreateClientDto>();
 
-        CreateMap<GetAllClientDto, Client>();
+        CreateMap<GetAllClientDto, Client>()
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.Projects, opt => opt.Ignore())
+            .ForMember(dest => dest.Invoices, opt => opt.Ignore());
+
         CreateMap<Client, GetAllClientDto>();
 
-        CreateMap<ClientDto, Client>();
+        CreateMap<ClientDto, Client>()
+            .ForMember(dest => dest.IsArchived, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.Projects, opt => opt.Ignore())
+            .ForMember(dest => dest.Invoices, opt => opt.Ignore());
+
         CreateMap<Client, ClientDto>();
 
-        CreateMap<UpdateClientDto, Client>();
+        CreateMap<UpdateClientDto, Client>()
+            .ForMember(dest => dest.IsArchived, opt => opt.Ignore())
+            .ForMember(dest => dest.UserId, opt => opt.Ignore())
+            .ForMember(dest => dest.User, opt => opt.Ignore())
+            .ForMember(dest => dest.Projects, opt => opt.Ignore())
+            .ForMember(dest => dest.Invoices, opt => opt.Ignore());
+
         CreateMap<Client, UpdateClientDto>();
+
 
         //Invoice
         CreateMap<Invoice, InvoiceDto>();
-        CreateMap<InvoiceDto, Invoice>();
+        CreateMap<InvoiceDto, Invoice>()
+            .ForMember(dest => dest.Client, opt => opt.Ignore());
 
-        CreateMap<UpdateInvoiceStatusDto, Invoice>();
+        CreateMap<UpdateInvoiceStatusDto, Invoice>()
+            .ForMember(dest => dest.InvoiceNumber, opt => opt.Ignore())
+            .ForMember(dest => dest.IssueDate, opt => opt.Ignore())
+            .ForMember(dest => dest.DueDate, opt => opt.Ignore())
+            .ForMember(dest => dest.ClientId, opt => opt.Ignore())
+            .ForMember(dest => dest.Client, opt => opt.Ignore())
+            .ForMember(dest => dest.LineItems, opt => opt.Ignore());
+        
         CreateMap<Invoice, UpdateInvoiceStatusDto>();
 
         //InvoiceLineItem
@@ -38,8 +72,7 @@ public class MappingProfile : Profile
 
         //TimeEntry
         CreateMap<TimeEntry, TimeEntryDto>();
-        CreateMap<TimeEntry, InvoiceLineItemDto>();
-        CreateMap<InvoiceLineItemDto, TimeEntry>();
+        CreateMap<TimeEntryDto, TimeEntry>();
 
         //Project
         CreateMap<Project, ProjectDto>();

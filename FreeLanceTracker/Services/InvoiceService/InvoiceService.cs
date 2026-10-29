@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AutoMapper;
 using FreeLanceTracker.Data;
 using FreeLanceTracker.DTOs.InvoiceDtos;
@@ -22,7 +18,7 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
             IssueDate = DateTime.UtcNow,
             DueDate = dueDate.Date,
             Status = InvoiceStatus.Draft,
-            InvoiceNumber = await GenerateInvoiceNumberAsync()
+            InvoiceNumber = await GenerateInvoiceNumberAsync(clientId)
         };
         context.Invoices.Add(invoice);
         await context.SaveChangesAsync();
@@ -190,7 +186,7 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
                 IssueDate = DateTime.UtcNow,
                 DueDate = dueDate,
                 Status = InvoiceStatus.Draft,
-                InvoiceNumber = await GenerateInvoiceNumberAsync(),
+                InvoiceNumber = await GenerateInvoiceNumberAsync(clientId),
                 LineItems = new List<InvoiceLineItem>()
             };
 
@@ -254,15 +250,12 @@ public class InvoiceService(ApplicationDbContext context, IMapper mapper) : IInv
             throw new ArgumentException("Time entry must belong to the selected project.");
     }
 
-    /// <summary>
-    ///     TODO: Will need updating.
-    ///     Generates a unique invoice number based on the current year and the count of invoices issued in that year.
-    /// </summary>
-    private async Task<string> GenerateInvoiceNumberAsync()
+
+    private async Task<string> GenerateInvoiceNumberAsync(int clientId)
     {
         var year = DateTime.UtcNow.Year;
         var count = await context.Invoices.Where(i => i.IssueDate.Year == year).CountAsync();
 
-        return $"INV-{year}-{count}";
+        return $"INV-{year}-{count}-{clientId}";
     }
 }
